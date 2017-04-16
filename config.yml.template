@@ -1,0 +1,7 @@
+feed:
+    url: 'http://piaware-cali/dump1090-fa/data/aircraft.json'
+database:
+    host: postgres_server_hostname
+    user: postgres_username
+    passwd: postgres_user_pwd
+    db: postgres_database_name

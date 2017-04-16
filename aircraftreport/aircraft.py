@@ -10,6 +10,12 @@ import psycopg2
 import requests
 import yaml
 
+import logging
+
+from utils import mathutils
+
+logger = logging.getLogger(__name__)
+
 KNOTS_TO_KMH = 1.852
 FEET_TO_METERS = 0.3048
 
@@ -132,11 +138,11 @@ class AircraftReport(object):
         return json.dumps(self, default=lambda o: o.__dict__, sort_keys=True, separators=(',', ':'))
 
     # Log this report to the database
-    def send_to_db(self, dbconn, print_query=False, update=False):
+    def send_to_db(self, database_connection, print_query=False, update=False):
         """
         Send this JSON record into the DB in an open connection
         :type print_query: bool
-        :param dbconn: Open database connection
+        :param database_connection: Open database connection
         :param print_query: Debugging mode to see the data getting inserted into the DB
         :param update: 
         :return: 
@@ -144,7 +150,7 @@ class AircraftReport(object):
         #
         # Need to extract datetime fields from time
         # Need to encode lat/lon appropriately
-        cur = dbconn.cursor()
+        cur = database_connection.cursor()
         coordinates = "POINT(%s %s)" % (self.lon, self.lat)
         if update:
             params = [self.hex, self.squawk, self.flight, self.is_metric,
@@ -155,8 +161,8 @@ class AircraftReport(object):
                       RPTR_FMT.format(self.reporter), self.time, self.messages]
             # TODO: Refactor with proper ORM to avoid SQLi vulns
             sql = '''
-	    UPDATE planereports SET (hex, squawk, flight, "isMetric", "isMLAT", altitude, speed, vert_rate, bearing, report_location, messages_sent, report_epoch, reporter, rssi, nucp, isgnd)
-	    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, ST_PointFromText(%s, 4326),
+        UPDATE planereports SET (hex, squawk, flight, "isMetric", "isMLAT", altitude, speed, vert_rate, bearing, report_location, messages_sent, report_epoch, reporter, rssi, nucp, isgnd)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, ST_PointFromText(%s, 4326),
             %s, %s, %s, %s, %s, %s)
             WHERE hex like %s and squawk like %s and flight like %s and reporter like %s
             and report_epoch = %s and messages_sent = %s'''
@@ -167,8 +173,8 @@ class AircraftReport(object):
                       self.track, coordinates, self.messages, self.time, self.reporter,
                       self.rssi, self.nucp, self.isGnd]
             sql = '''
-	    INSERT into planereports (hex, squawk, flight, "isMetric", "isMLAT", altitude, speed, vert_rate, bearing, report_location, messages_sent, report_epoch, reporter, rssi, nucp, isgnd)
-	    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, ST_PointFromText(%s, 4326), %s, %s, %s, %s, %s, %s);'''
+        INSERT into planereports (hex, squawk, flight, "isMetric", "isMLAT", altitude, speed, vert_rate, bearing, report_location, messages_sent, report_epoch, reporter, rssi, nucp, isgnd)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, ST_PointFromText(%s, 4326), %s, %s, %s, %s, %s, %s);'''
 
         if print_query:
             print(cur.mogrify(sql, params))
@@ -206,12 +212,10 @@ class AircraftReport(object):
             print(cur.mogrify(sql))
         cur.execute(sql)
 
-    #
     # Distance from another object with lat/lon
-    #
     def distance(self, reporter):
         """Returns distance in meters from another object with lat/lon"""
-        return haversine_distance_meters(self.lon, self.lat, reporter.lon, reporter.lat)
+        return mathutils.haversine_distance_meters(self.lon, self.lat, reporter.lon, reporter.lat)
 
 
 def database_connection(yamlfile, dbuser=None, dbhost=None, dbpasswd=None, dbport=5432):
@@ -277,7 +281,7 @@ def get_aircraft_data_from_url(url_string, url_params=None):
 
     # Check for dump1090_mutability style of interface
     if 'aircraft' in data:
-        planereps = []
+        reports_list = []
         for pl in data['aircraft']:
             valid = True
             for keywrd in DUMP1090_MIN:
@@ -301,11 +305,12 @@ def get_aircraft_data_from_url(url_string, url_params=None):
                 else:
                     setattr(plane, 'mlat', True)
 
-                planereps.append(plane)
+                logger.debug(plane.to_json())
+                reports_list.append(plane)
 
     # VRS style - adsbexchange.com        
     elif 'acList' in data:
-        planereps = []
+        reports_list = []
         for pl in data['acList']:
             valid = True
             for keywrd in VRS_KEYWORDS:
@@ -340,8 +345,8 @@ def get_aircraft_data_from_url(url_string, url_params=None):
                                        track=track, lon=lon, lat=lat, vert_rate=vert_rate, seen=seen,
                                        validposition=1, validtrack=1, reporter="", mlat=mlat, isGnd=isGnd,
                                        report_location=None, messages=messages, seen_pos=seen_pos, category=None)
-                planereps.append(plane)
+                reports_list.append(plane)
 
     else:
-        planereps = [AircraftReport(**pl) for pl in data]
-    return planereps
+        reports_list = [AircraftReport(**pl) for pl in data]
+    return reports_list
