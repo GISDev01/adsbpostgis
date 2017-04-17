@@ -11,6 +11,9 @@ from utils import mathutils
 
 logger = logging.getLogger(__name__)
 
+RPTR_FMT = "{:10.10}"
+FLT_FMT = "{:8.8}"
+
 
 class RadioReceiver(object):
     """
@@ -95,6 +98,7 @@ def readReporter(dbconn, key="Home1", printQuery=None):
     Returns:
         A RadioReceiver object with a location field in WKB format
     """
+    from psycopg2.extras import RealDictCursor
     cur = dbconn.cursor(cursor_factory=RealDictCursor)
     sql = '''
 		SELECT name, type as mytype, ST_X(reporter_location::geometry) as lon, ST_Y(reporter_location::geometry) as lat, url, reporter_location as location

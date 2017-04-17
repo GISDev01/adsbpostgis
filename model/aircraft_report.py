@@ -218,49 +218,6 @@ class AircraftReport(object):
         return mathutils.haversine_distance_meters(self.lon, self.lat, reporter.lon, reporter.lat)
 
 
-def database_connection(yamlfile, dbuser=None, dbhost=None, dbpasswd=None, dbport=5432):
-    """
-    Makes a connection to a Postgres DB, dictated by a yaml file, with optional
-    overides.
-
-    Args:
-        yamlfile: Filename of the yaml file (compulsory)
-        dbuser: Contains name of database user to login (optional)
-        dbhost: Name of host that DB is running on (optional)
-        dbpasswd: Password for the DB account (optional)
-        dbport: Portnumber to connect to on DB host (optional)
-
-    Returns:
-        psycopg2 DB connection
-
-    Could do with some sprucing up. Format of yamlfile looks like:
-        adsb_logger:
-            dbhost: somehost.somewhere.com
-            dbuser: some_username
-            dbpassword: S3kr1t_P4ssw0rd
-    """
-    dbconn = None
-
-    # Also allow yaml file to be completely or partially overridden
-    if not (dbuser and dbhost and dbpasswd):
-        with open(yamlfile, 'r') as db_cfg_file:
-            db_conf = yaml.load(db_cfg_file)
-        if not dbhost:
-            dbhost = db_conf["adsb_logger"]["dbhost"]
-        if not dbuser:
-            dbuser = db_conf["adsb_logger"]["dbuser"]
-        if not dbpasswd:
-            dbpasswd = db_conf["adsb_logger"]["dbpassword"]
-    connect_str = "dbname=PlaneReports user=" + dbuser + " host=" + \
-                  dbhost + " password=" + dbpasswd + " port=" + str(dbport)
-    try:
-        dbconn = psycopg2.connect(connect_str)
-    except:
-        print("Can't connect to plane report database with " + connect_str)
-        exit(-1)
-    return dbconn
-
-
 def get_aircraft_data_from_url(url_string, url_params=None):
     """
     Reads JSON objects from a server at a URL (usually a dump1090 instance)
