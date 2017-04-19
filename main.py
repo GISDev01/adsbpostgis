@@ -30,19 +30,20 @@ db_pwd = config['database']['pwd']
 
 postgres_db_connection = pg_utils.database_connection(dbhost=db_hostname, dbport=db_port, dbuser=db_user,
                                                       dbpasswd=db_pwd)
-#        for keyword in ["name", "type", "long83", "lat83", "data_access_url", "location"]:
 
-radio_receiver = report_receiver.RadioReceiver(name='bodge', type='', lat83=receiver_lat83, long83=receiver_long83,
+radio_receiver = report_receiver.RadioReceiver(name='bodge', type='piaware1', lat83=receiver_lat83,
+                                               long83=receiver_long83,
                                                data_access_url='', location="")
 
 
 def crank_it_up():
     logger.debug('Cranking it up.')
-    aircraft_report.get_aircraft_data_from_url(aircraft_data_url)
-    pass
+    current_reports_list = aircraft_report.get_aircraft_data_from_url(aircraft_data_url)
+    aircraft_report.load_aircraft_reports_list_into_db(aircraft_reports_list=current_reports_list,
+                                                       radio_receiver=radio_receiver,
+                                                       dbconn=postgres_db_connection)
 
 
 if __name__ == '__main__':
     logger.debug('Entry from __main__ started')
     crank_it_up()
-    pass

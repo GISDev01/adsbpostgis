@@ -1,7 +1,13 @@
 feed:
-    url: 'http://piaware-cali/dump1090-fa/data/aircraft.json'
+    url: 'http://raspi1/dump1090-fa/data/aircraft.json'
+
+receiver:
+    lat83: 22.000000
+    long83: -122.000000
+
 database:
-    host: postgres_server_hostname
-    user: postgres_username
-    passwd: postgres_user_pwd
-    db: postgres_database_name
+    hostname: 'localhost'
+    port: '5432'
+    dbname: 'adsb'
+    user: 'postgres'
+    pwd: 'pwdhere'

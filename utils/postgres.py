@@ -23,6 +23,7 @@ def database_connection(dbuser=None, dbhost=None, dbpasswd=None, dbport=5432):
     """
     connection = None
 
+    # TODO: Pull dbname out into param/argument
     connect_str = "dbname=AircraftReports user=" + dbuser + " host=" + \
                   dbhost + " password=" + dbpasswd + " port=" + str(dbport)
     try:

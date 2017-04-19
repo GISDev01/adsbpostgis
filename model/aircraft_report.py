@@ -138,7 +138,7 @@ class AircraftReport(object):
         return json.dumps(self, default=lambda o: o.__dict__, sort_keys=True, separators=(',', ':'))
 
     # Log this report to the database
-    def send_to_db(self, database_connection, print_query=False, update=False):
+    def send_aircraft_to_db(self, database_connection, print_query=False, update=False):
         """
         Send this JSON record into the DB in an open connection
         :type print_query: bool
@@ -161,7 +161,7 @@ class AircraftReport(object):
                       RPTR_FMT.format(self.reporter), self.time, self.messages]
             # TODO: Refactor with proper ORM to avoid SQLi vulns
             sql = '''
-        UPDATE planereports SET (hex, squawk, flight, "isMetric", "isMLAT", altitude, speed, vert_rate, bearing, report_location, messages_sent, report_epoch, reporter, rssi, nucp, isgnd)
+        UPDATE aircraftreports SET (hex, squawk, flight, is_metric, "is_MLAT", altitude, speed, vert_rate, bearing, report_location, messages_sent, report_epoch, reporter, rssi, nucp, is_ground)
         VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, ST_PointFromText(%s, 4326),
             %s, %s, %s, %s, %s, %s)
             WHERE hex like %s and squawk like %s and flight like %s and reporter like %s
@@ -173,12 +173,13 @@ class AircraftReport(object):
                       self.track, coordinates, self.messages, self.time, self.reporter,
                       self.rssi, self.nucp, self.isGnd]
             sql = '''
-        INSERT into planereports (hex, squawk, flight, "isMetric", "isMLAT", altitude, speed, vert_rate, bearing, report_location, messages_sent, report_epoch, reporter, rssi, nucp, isgnd)
+        INSERT into aircraftreports (hex, squawk, flight, is_metric, is_MLAT, altitude, speed, vert_rate, bearing, report_location, messages_sent, report_epoch, reporter, rssi, nucp, is_ground)
         VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, ST_PointFromText(%s, 4326), %s, %s, %s, %s, %s, %s);'''
 
         if print_query:
             print(cur.mogrify(sql, params))
 
+        print(cur.mogrify(sql, params))
         cur.execute(sql, params)
         cur.close()
 
@@ -199,7 +200,7 @@ class AircraftReport(object):
             psycopg2 exceptions
         """
         cur = dbconn.cursor()
-        sql = '''DELETE from planereports WHERE '''
+        sql = '''DELETE from aircraftreports WHERE '''
         sql = sql + (" hex like '%s' " % self.hex)
         sql = sql + (" and flight like '%s' " % FLT_FMT.format(self.flight))
         sql = sql + (" and reporter like '%s'" %
@@ -227,7 +228,7 @@ def get_aircraft_data_from_url(url_string, url_params=None):
         url_params: parameters used for filtering requests to adsbexchange.com
 
     Returns:
-        A list of PlaneReports
+        A list of AircraftReports
     """
     cur_time = time.time()
     if url_params:
@@ -307,3 +308,19 @@ def get_aircraft_data_from_url(url_string, url_params=None):
     else:
         reports_list = [AircraftReport(**pl) for pl in data]
     return reports_list
+
+
+def load_aircraft_reports_list_into_db(aircraft_reports_list, radio_receiver, dbconn):
+    current_timestamp = int(time.time())
+    for aircraft in aircraft_reports_list:
+        if aircraft.validposition and aircraft.validtrack:
+            aircraft.time = current_timestamp - aircraft.seen
+            aircraft.reporter = radio_receiver.name
+            if dbconn:
+                aircraft.send_aircraft_to_db(dbconn)
+            else:
+                print(aircraft.to_JSON())
+        else:
+            logger.error("Dropped report " + aircraft.to_JSON())
+    if dbconn:
+        dbconn.commit()
