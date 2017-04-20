@@ -4,13 +4,10 @@ Each report is sent to Kafka for ingestion into Postgres
 """
 
 import json
+import logging
 import time
 
-import psycopg2
 import requests
-import yaml
-
-import logging
 
 from utils import mathutils
 
@@ -155,26 +152,40 @@ class AircraftReport(object):
         if update:
             params = [self.hex, self.squawk, self.flight, self.is_metric,
                       self.mlat, self.altitude, self.speed, self.vert_rate,
-                      self.track, coordinates, self.messages, self.time, self.reporter,
+                      self.track, coordinates, self.lat, self.lon,
+                      self.messages, self.time, self.reporter,
                       self.rssi, self.nucp, self.isGnd,
                       self.hex, self.squawk, FLT_FMT.format(self.flight),
                       RPTR_FMT.format(self.reporter), self.time, self.messages]
             # TODO: Refactor with proper ORM to avoid SQLi vulns
             sql = '''
-        UPDATE aircraftreports SET (hex, squawk, flight, is_metric, "is_MLAT", altitude, speed, vert_rate, bearing, report_location, messages_sent, report_epoch, reporter, rssi, nucp, is_ground)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, ST_PointFromText(%s, 4326),
-            %s, %s, %s, %s, %s, %s)
+        UPDATE aircraftreports SET (hex, squawk, flight, is_metric, "is_MLAT", altitude, speed, 
+                                    vert_rate, bearing, report_location, latitude83, longitude83, 
+                                    messages_sent, report_epoch, reporter, rssi, nucp, is_ground)
+        VALUES (%s, %s, %s, %s, %s, %s, %s,
+                %s, %s, ST_PointFromText(%s, 4326), %s, %s,
+                    %s, %s, %s, %s, %s, %s)
             WHERE hex like %s and squawk like %s and flight like %s and reporter like %s
             and report_epoch = %s and messages_sent = %s'''
 
         else:
             params = [self.hex, self.squawk, self.flight, self.is_metric,
                       self.mlat, self.altitude, self.speed, self.vert_rate,
-                      self.track, coordinates, self.messages, self.time, self.reporter,
+                      self.track, coordinates, self.lat, self.lon,
+                      self.messages, self.time, self.reporter,
                       self.rssi, self.nucp, self.isGnd]
             sql = '''
-        INSERT into aircraftreports (hex, squawk, flight, is_metric, is_MLAT, altitude, speed, vert_rate, bearing, report_location, messages_sent, report_epoch, reporter, rssi, nucp, is_ground)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, ST_PointFromText(%s, 4326), %s, %s, %s, %s, %s, %s);'''
+                    INSERT into aircraftreports (hex, squawk, flight, is_metric, 
+                                                 is_MLAT, altitude, speed, vert_rate, 
+                                                 bearing, report_location, latitude83, longitude83,
+                                                 messages_sent, report_epoch, reporter, 
+                                                 rssi, nucp, is_ground)
+                    VALUES (%s, %s, %s, %s, 
+                            %s, %s, %s, %s, 
+                            %s, ST_PointFromText(%s, 4326), %s, %s, 
+                            %s, %s, %s, 
+                            %s, %s, %s);
+                '''
 
         if print_query:
             print(cur.mogrify(sql, params))

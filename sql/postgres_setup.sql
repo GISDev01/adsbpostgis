@@ -22,6 +22,8 @@ CREATE TABLE aircraftreports (
   bearing         INTEGER,
   messages_sent   INTEGER,
   report_location GEOGRAPHY(Point, 4326),
+  longitude83     DOUBLE PRECISION,
+  latitude83      DOUBLE PRECISION,
   report_epoch    INTEGER,
   reporter        CHARACTER(10),
   rssi            DOUBLE PRECISION,
