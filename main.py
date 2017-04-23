@@ -17,10 +17,10 @@ logging.basicConfig(level=logging.DEBUG, format=FORMAT)
 logger = logging.getLogger(__name__)
 
 # config vars
-aircraft_data_url = config['feed']['url']
+aircraft_data_url1 = config['feed1']['url']
 
-receiver_lat83 = config['receiver']['lat83']
-receiver_long83 = config['receiver']['long83']
+receiver1_lat83 = config['receiver1']['lat83']
+receiver1_long83 = config['receiver1']['long83']
 
 db_hostname = config['database']['hostname']
 db_port = config['database']['port']
@@ -31,16 +31,16 @@ db_pwd = config['database']['pwd']
 postgres_db_connection = pg_utils.database_connection(dbhost=db_hostname, dbport=db_port, dbuser=db_user,
                                                       dbpasswd=db_pwd)
 
-radio_receiver = report_receiver.RadioReceiver(name='bodge', type='piaware1', lat83=receiver_lat83,
-                                               long83=receiver_long83,
-                                               data_access_url='', location="")
+radio_receiver_1 = report_receiver.RadioReceiver(name='bodge', type='piaware1', lat83=receiver1_lat83,
+                                                 long83=receiver1_long83,
+                                                 data_access_url='', location="")
 
 
 def crank_it_up():
     logger.debug('Cranking it up.')
-    current_reports_list = aircraft_report.get_aircraft_data_from_url(aircraft_data_url)
+    current_reports_list = aircraft_report.get_aircraft_data_from_url(aircraft_data_url1)
     aircraft_report.load_aircraft_reports_list_into_db(aircraft_reports_list=current_reports_list,
-                                                       radio_receiver=radio_receiver,
+                                                       radio_receiver=radio_receiver_1,
                                                        dbconn=postgres_db_connection)
 
 

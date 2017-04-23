@@ -1,9 +1,16 @@
-feed:
+feed1:
     url: 'http://raspi1/dump1090-fa/data/aircraft.json'
 
-receiver:
+receiver1:
     lat83: 22.000000
     long83: -122.000000
+
+feed2:
+    url: 'http://raspi2/dump1090-fa/data/aircraft.json'
+
+receiver2:
+    lat83: 22.500000
+    long83: -122.500000
 
 database:
     hostname: 'localhost'
