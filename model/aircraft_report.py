@@ -101,9 +101,9 @@ class AircraftReport(object):
         if multi_lat is None:
             setattr(self, 'mlat', False)
 
-        # signal_strength = getattr(self, 'rssi', None)
-        # if signal_strength is None:
-        #     setattr(self, 'rssi', None)
+        signal_strength = getattr(self, 'rssi', None)
+        if signal_strength is None:
+            setattr(self, 'rssi', None)
 
         is_nucp = getattr(self, 'nucp', None)
         if is_nucp is None:
@@ -123,9 +123,8 @@ class AircraftReport(object):
         self.speed = int(self.speed / KNOTS_TO_KMH)
         self.is_metric = False
 
-    # Make it easier to log this object
     def __str__(self):
-        fields = ['  {}: {}'.format(k, v) for k, v in self.__dict__.iteritems()
+        fields = ['  {}: {}'.format(k, v) for k, v in self.__dict__.items()
                   if not k.startswith("_")]
         return "{}(\n{})".format(self.__class__.__name__, '\n'.join(fields))
 
@@ -144,7 +143,7 @@ class AircraftReport(object):
         :param update: 
         :return: 
         """
-        #
+
         # Need to extract datetime fields from time
         # Need to encode lat/lon appropriately
         cur = database_connection.cursor()
@@ -174,35 +173,21 @@ class AircraftReport(object):
                       self.track, coordinates, self.lat, self.lon,
                       self.messages, self.time, self.reporter,
                       self.rssi, self.nucp, self.isGnd]
-            sql = '''
-                    INSERT into aircraftreports (hex, squawk, flight, is_metric, 
-                                                 is_MLAT, altitude, speed, vert_rate, 
-                                                 bearing, report_location, latitude83, longitude83,
-                                                 messages_sent, report_epoch, reporter, 
-                                                 rssi, nucp, is_ground)
-                    VALUES (%s, %s, %s, %s, 
-                            %s, %s, %s, %s, 
-                            %s, ST_PointFromText(%s, 4326), %s, %s, 
-                            %s, %s, %s, 
-                            %s, %s, %s);
-                '''
+            sql = '''INSERT into aircraftreports (hex, squawk, flight, is_metric, is_MLAT, altitude, speed, vert_rate, bearing, report_location, latitude83, longitude83, messages_sent, report_epoch, reporter, rssi, nucp, is_ground)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, ST_PointFromText(%s, 4326), %s, %s, %s, %s, %s, %s, %s, %s);'''
 
-        if print_query:
-            print(cur.mogrify(sql, params))
-
-        print(cur.mogrify(sql, params))
+        logger.info(cur.mogrify(sql, params))
         cur.execute(sql, params)
         cur.close()
 
     # Delete record - assuming sampling once a second, the combination of
     # hex, report_epoch and reporter should be unique
-    def delete_from_db(self, dbconn, printQuery=None):
+    def delete_from_db(self, db_connection):
         """
         Deletes the record that matches the plane report from the DB
 
         Args:
-            dbconn: An existing DB connection
-            printQuery:  A boolean which controls the printing of the query
+            db_connection: An existing DB connection
 
         Returns:
             Nothing much
@@ -210,7 +195,7 @@ class AircraftReport(object):
         Raises:
             psycopg2 exceptions
         """
-        cur = dbconn.cursor()
+        cur = db_connection.cursor()
         sql = '''DELETE from aircraftreports WHERE '''
         sql = sql + (" hex like '%s' " % self.hex)
         sql = sql + (" and flight like '%s' " % flight_format.format(self.flight))
@@ -220,14 +205,14 @@ class AircraftReport(object):
         sql = sql + (" and altitude=%s " % self.altitude)
         sql = sql + (" and speed=%s " % self.speed)
         sql = sql + (" and messages_sent=%s" % self.messages)
-        if printQuery:
-            print(cur.mogrify(sql))
+
+        logger.info(cur.mogrify(sql))
         cur.execute(sql)
 
     # Distance from another object with lat/lon
-    def distance(self, reporter):
+    def distance(self, other_location):
         """Returns distance in meters from another object with lat/lon"""
-        return mathutils.haversine_distance_meters(self.lon, self.lat, reporter.lon, reporter.lat)
+        return mathutils.haversine_distance_meters(self.lon, self.lat, other_location.lon, other_location.lat)
 
 
 def get_aircraft_data_from_url(url_string, url_params=None):
