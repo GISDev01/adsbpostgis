@@ -16,8 +16,8 @@ logger = logging.getLogger(__name__)
 KNOTS_TO_KMH = 1.852
 FEET_TO_METERS = 0.3048
 
-RPTR_FMT = "{:10.10}"
-FLT_FMT = "{:8.8}"
+reporter_format = "{:10.10}"
+flight_format = "{:8.8}"
 
 """
 Partial original implementation of this class pulled from this repo: 
@@ -155,8 +155,8 @@ class AircraftReport(object):
                       self.track, coordinates, self.lat, self.lon,
                       self.messages, self.time, self.reporter,
                       self.rssi, self.nucp, self.isGnd,
-                      self.hex, self.squawk, FLT_FMT.format(self.flight),
-                      RPTR_FMT.format(self.reporter), self.time, self.messages]
+                      self.hex, self.squawk, flight_format.format(self.flight),
+                      reporter_format.format(self.reporter), self.time, self.messages]
             # TODO: Refactor with proper ORM to avoid SQLi vulns
             sql = '''
         UPDATE aircraftreports SET (hex, squawk, flight, is_metric, "is_MLAT", altitude, speed, 
@@ -213,9 +213,9 @@ class AircraftReport(object):
         cur = dbconn.cursor()
         sql = '''DELETE from aircraftreports WHERE '''
         sql = sql + (" hex like '%s' " % self.hex)
-        sql = sql + (" and flight like '%s' " % FLT_FMT.format(self.flight))
+        sql = sql + (" and flight like '%s' " % flight_format.format(self.flight))
         sql = sql + (" and reporter like '%s'" %
-                     RPTR_FMT.format(self.reporter))
+                     reporter_format.format(self.reporter))
         sql = sql + (" and report_epoch=%s " % self.time)
         sql = sql + (" and altitude=%s " % self.altitude)
         sql = sql + (" and speed=%s " % self.speed)
@@ -293,7 +293,7 @@ def get_aircraft_data_from_url(url_string, url_params=None):
                 speed = pl['Spd']
                 squawk = pl['Sqk']
                 if 'Call' in pl:
-                    flight = FLT_FMT.format(pl['Call'])
+                    flight = flight_format.format(pl['Call'])
                 else:
                     flight = ' '
                 track = pl['Trak']
@@ -330,7 +330,7 @@ def load_aircraft_reports_list_into_db(aircraft_reports_list, radio_receiver, db
             if dbconn:
                 aircraft.send_aircraft_to_db(dbconn)
             else:
-                print(aircraft.to_JSON())
+                logger.info(aircraft)
         else:
             logger.error("Dropped report " + aircraft.to_JSON())
     if dbconn:

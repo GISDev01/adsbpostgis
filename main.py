@@ -1,6 +1,7 @@
 # Stub out some common entry points to later convert to tests after everything is wired up together
 
 import logging
+import time
 
 import yaml
 
@@ -28,22 +29,40 @@ db_name = config['database']['dbname']
 db_user = config['database']['user']
 db_pwd = config['database']['pwd']
 
-postgres_db_connection = pg_utils.database_connection(dbhost=db_hostname, dbport=db_port, dbuser=db_user,
+# TODO: set in config
+total_samples_cutoff_val = 1000
+
+postgres_db_connection = pg_utils.database_connection(dbhost=db_hostname,
+                                                      dbport=db_port,
+                                                      dbuser=db_user,
                                                       dbpasswd=db_pwd)
 
-radio_receiver_1 = report_receiver.RadioReceiver(name='bodge', type='piaware1', lat83=receiver1_lat83,
+radio_receiver_1 = report_receiver.RadioReceiver(name='bodge',
+                                                 type='piaware1',
+                                                 lat83=receiver1_lat83,
                                                  long83=receiver1_long83,
-                                                 data_access_url='', location="")
+                                                 data_access_url='',
+                                                 location="")
 
 
 def crank_it_up():
     logger.debug('Cranking it up.')
-    current_reports_list = aircraft_report.get_aircraft_data_from_url(aircraft_data_url1)
-    aircraft_report.load_aircraft_reports_list_into_db(aircraft_reports_list=current_reports_list,
-                                                       radio_receiver=radio_receiver_1,
-                                                       dbconn=postgres_db_connection)
+    total_samples_count = 0
+    while total_samples_count < total_samples_cutoff_val:
+        current_time_1 = time.time()
+
+        current_reports_list = aircraft_report.get_aircraft_data_from_url(aircraft_data_url1)
+        aircraft_report.load_aircraft_reports_list_into_db(
+            aircraft_reports_list=current_reports_list,
+            radio_receiver=radio_receiver_1,
+            dbconn=postgres_db_connection)
+
+        current_time_2 = time.time()
+        logger.info(str(current_time_2 - current_time_1) + ' seconds for data pull')
+        total_samples_count += 1
+        time.sleep(5)
 
 
 if __name__ == '__main__':
-    logger.debug('Entry from __main__ started')
+    logger.debug('Entry from main.py main started')
     crank_it_up()
