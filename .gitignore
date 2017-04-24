@@ -1,5 +1,8 @@
 config.yml
 /sql/scratch.sql
+/faaopendata/MASTER.txt
+/faaopendata/MASTER_CLEANED.csv
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
