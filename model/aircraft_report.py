@@ -58,7 +58,7 @@ class AircraftReport(object):
 
     # Set all of these initially outside the self/object scope as defaults, and then we set them properly within
     # the init, if they exist in the JSON that is being parsed within the object
-    hex = None
+    mode_s_hex = None
     altitude = 0.0
     speed = 0.0
     squawk = None
@@ -134,13 +134,11 @@ class AircraftReport(object):
         return json.dumps(self, default=lambda o: o.__dict__, sort_keys=True, separators=(',', ':'))
 
     # Log this report to the database
-    def send_aircraft_to_db(self, database_connection, print_query=False, update=False):
+    def send_aircraft_to_db(self, database_connection, update=False):
         """
         Send this JSON record into the DB in an open connection
-        :type print_query: bool
         :param database_connection: Open database connection
-        :param print_query: Debugging mode to see the data getting inserted into the DB
-        :param update: 
+        :param update: bool to indicate an update or insert (TODO: use upsert)
         :return: 
         """
 
@@ -149,26 +147,26 @@ class AircraftReport(object):
         cur = database_connection.cursor()
         coordinates = "POINT(%s %s)" % (self.lon, self.lat)
         if update:
-            params = [self.hex, self.squawk, self.flight, self.is_metric,
+            params = [self.mode_s_hex, self.squawk, self.flight, self.is_metric,
                       self.mlat, self.altitude, self.speed, self.vert_rate,
                       self.track, coordinates, self.lat, self.lon,
                       self.messages, self.time, self.reporter,
                       self.rssi, self.nucp, self.isGnd,
-                      self.hex, self.squawk, flight_format.format(self.flight),
+                      self.mode_s_hex, self.squawk, flight_format.format(self.flight),
                       reporter_format.format(self.reporter), self.time, self.messages]
             # TODO: Refactor with proper ORM to avoid SQLi vulns
-            sql = '''UPDATE aircraftreports SET (hex, squawk, flight, is_metric, is_MLAT, altitude, speed, vert_rate, bearing, report_location, latitude83, longitude83, messages_sent, report_epoch, reporter, rssi, nucp, is_ground)
+            sql = '''UPDATE aircraftreports SET (mode_s_hex, squawk, flight, is_metric, is_mlat, altitude, speed, vert_rate, bearing, report_location, latitude83, longitude83, messages_sent, report_epoch, reporter, rssi, nucp, is_ground)
         VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, ST_PointFromText(%s, 4326), %s, %s, %s, %s, %s, %s, %s, %s)
-            WHERE hex like %s and squawk like %s and flight like %s and reporter like %s
+            WHERE mode_s_hex like %s and squawk like %s and flight like %s and reporter like %s
             and report_epoch = %s and messages_sent = %s'''
 
         else:
-            params = [self.hex, self.squawk, self.flight, self.is_metric,
+            params = [self.mode_s_hex, self.squawk, self.flight, self.is_metric,
                       self.mlat, self.altitude, self.speed, self.vert_rate,
                       self.track, coordinates, self.lat, self.lon,
                       self.messages, self.time, self.reporter,
                       self.rssi, self.nucp, self.isGnd]
-            sql = '''INSERT into aircraftreports (hex, squawk, flight, is_metric, is_MLAT, altitude, speed, vert_rate, bearing, report_location, latitude83, longitude83, messages_sent, report_epoch, reporter, rssi, nucp, is_ground)
+            sql = '''INSERT into aircraftreports (mode_s_hex, squawk, flight, is_metric, is_mlat, altitude, speed, vert_rate, bearing, report_location, latitude83, longitude83, messages_sent, report_epoch, reporter, rssi, nucp, is_ground)
                     VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, ST_PointFromText(%s, 4326), %s, %s, %s, %s, %s, %s, %s, %s);'''
 
         logger.info(cur.mogrify(sql, params))
@@ -192,7 +190,7 @@ class AircraftReport(object):
         """
         cur = db_connection.cursor()
         sql = '''DELETE from aircraftreports WHERE '''
-        sql = sql + (" hex like '%s' " % self.hex)
+        sql = sql + (" mode_s_hex like '%s' " % self.mode_s_hex)
         sql = sql + (" and flight like '%s' " % flight_format.format(self.flight))
         sql = sql + (" and reporter like '%s'" %
                      reporter_format.format(self.reporter))
@@ -222,10 +220,12 @@ def get_aircraft_data_from_url(url_string, url_params=None):
         A list of AircraftReports
     """
     current_report_pulled_time = time.time()
+
     if url_params:
         response = requests.get(url_string, params=url_params)
     else:
         response = requests.get(url_string)
+
     data = json.loads(response.text)
 
     # Check for dump1090 JSON Schema (should contain array of report within an aircraft key)
@@ -299,9 +299,9 @@ def ingest_vrs_format_record(vrs_aircraft_report, report_pulled_timestamp):
         return plane
 
 
-def ingest_dump1090_report_list(dumpfmt_aircraft_report):
+def ingest_dump1090_report_list(dumpfmt_aircraft_report_list):
     dump1090_ingested_reports_list = []
-    for dumpfmt_aircraft_report in dumpfmt_aircraft_report:
+    for dumpfmt_aircraft_report in dumpfmt_aircraft_report_list:
         logger.debug('Ingest Dump1090 Format')
 
         valid = True
@@ -326,11 +326,12 @@ def ingest_dump1090_report_list(dumpfmt_aircraft_report):
             else:
                 setattr(dump1090_aircraft_report, 'mlat', True)
 
+            setattr(dump1090_aircraft_report, 'mode_s_hex', dumpfmt_aircraft_report['hex'])
             logger.info(dump1090_aircraft_report.to_json())
 
             dump1090_ingested_reports_list.append(dump1090_aircraft_report)
 
         else:
-            logger.debug('Skipping this invalid Dump1090 report: ' + json.dumps(dumpfmt_aircraft_report))
+            logger.debug('Skipping this invalid Dump1090 report: ' + json.dumps(dumpfmt_aircraft_report_list))
 
     return dump1090_ingested_reports_list

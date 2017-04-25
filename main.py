@@ -32,13 +32,14 @@ db_pwd = config['database']['pwd']
 # TODO: set in config
 total_samples_cutoff_val = 1000
 
-postgres_db_connection = pg_utils.database_connection(dbhost=db_hostname,
+postgres_db_connection = pg_utils.database_connection(dbname=db_name,
+                                                      dbhost=db_hostname,
                                                       dbport=db_port,
                                                       dbuser=db_user,
                                                       dbpasswd=db_pwd)
 
-radio_receiver_1 = report_receiver.RadioReceiver(name='bodge',
-                                                 type='piaware1',
+radio_receiver_1 = report_receiver.RadioReceiver(name='piaware1',
+                                                 type='raspi',
                                                  lat83=receiver1_lat83,
                                                  long83=receiver1_long83,
                                                  data_access_url='',
@@ -52,10 +53,12 @@ def crank_it_up():
         current_time_1 = time.time()
 
         current_reports_list = aircraft_report.get_aircraft_data_from_url(aircraft_data_url1)
-        aircraft_report.load_aircraft_reports_list_into_db(
-            aircraft_reports_list=current_reports_list,
-            radio_receiver=radio_receiver_1,
-            dbconn=postgres_db_connection)
+        if len(current_reports_list) > 0:
+            print(current_reports_list)
+            aircraft_report.load_aircraft_reports_list_into_db(
+                aircraft_reports_list=current_reports_list,
+                radio_receiver=radio_receiver_1,
+                dbconn=postgres_db_connection)
 
         current_time_2 = time.time()
         logger.info(str(current_time_2 - current_time_1) + ' seconds for data pull')

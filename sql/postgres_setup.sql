@@ -1,4 +1,4 @@
-CREATE DATABASE "AircraftReports"
+CREATE DATABASE "SkyAlpha"
 WITH
 OWNER = postgres
 ENCODING = 'UTF8'
@@ -11,11 +11,11 @@ CREATE EXTENSION IF NOT EXISTS postgis WITH SCHEMA public;
 --
 
 CREATE TABLE aircraftreports (
-  hex             CHARACTER(6),
-  squawk          CHARACTER(6),
-  flight          CHARACTER(8),
+  mode_s_hex      TEXT,
+  squawk          TEXT,
+  flight          TEXT,
   is_metric       BOOLEAN,
-  is_MLAT         BOOLEAN,
+  is_mlat         BOOLEAN,
   altitude        DOUBLE PRECISION,
   speed           DOUBLE PRECISION,
   vert_rate       DOUBLE PRECISION,
@@ -25,10 +25,11 @@ CREATE TABLE aircraftreports (
   longitude83     DOUBLE PRECISION,
   latitude83      DOUBLE PRECISION,
   report_epoch    INTEGER,
-  reporter        CHARACTER(10),
+  reporter        TEXT,
   rssi            DOUBLE PRECISION,
   nucp            INTEGER,
-  is_ground       BOOLEAN
+  is_ground       BOOLEAN,
+  is_anon         BOOLEAN
 );
 
 
@@ -42,16 +43,16 @@ ALTER TABLE aircraftreports
 COMMENT ON TABLE aircraftreports IS 'Reports of a plane''s position.';
 
 --
--- Name: COLUMN aircraftreports.hex; Type: COMMENT; Schema: public; Owner: postgres
+-- Name: COLUMN aircraftreports.mode_s_hex; Type: COMMENT; Schema: public; Owner: postgres
 --
 
-COMMENT ON COLUMN aircraftreports.hex IS 'ICAO24 code that uniquely identifies aircraft.';
+COMMENT ON COLUMN aircraftreports.mode_s_hex IS 'ICAO24 code that uniquely identifies aircraft.';
 
 --
 -- Name: COLUMN aircraftreports.squawk; Type: COMMENT; Schema: public; Owner: postgres
 --
 
-COMMENT ON COLUMN aircraftreports.squawk IS 'Code used by local air traffic controllers to communicate with the planes they are controllong.';
+COMMENT ON COLUMN aircraftreports.squawk IS 'Code used by local air traffic controllers to communicate with the planes they are controlling.';
 
 --
 -- Name: COLUMN aircraftreports.flight; Type: COMMENT; Schema: public; Owner: postgres
@@ -60,16 +61,16 @@ COMMENT ON COLUMN aircraftreports.squawk IS 'Code used by local air traffic cont
 COMMENT ON COLUMN aircraftreports.flight IS 'Flight number assigned to aircraft for this particular route/time';
 
 --
--- Name: COLUMN aircraftreports."is_metric"; Type: COMMENT; Schema: public; Owner: postgres
+-- Name: COLUMN aircraftreports.is_metric; Type: COMMENT; Schema: public; Owner: postgres
 --
 
 COMMENT ON COLUMN aircraftreports.is_metric IS 'Does this record have metric units (metres/kmh) for altitude & speed';
 
 --
--- Name: COLUMN aircraftreports.is_MLAT; Type: COMMENT; Schema: public; Owner: postgres
+-- Name: COLUMN aircraftreports.is_mlat; Type: COMMENT; Schema: public; Owner: postgres
 --
 
-COMMENT ON COLUMN aircraftreports.is_MLAT IS 'Was this position report derived from multilateration';
+COMMENT ON COLUMN aircraftreports.is_mlat IS 'Was this position report derived from multilateration';
 
 --
 -- Name: COLUMN aircraftreports.altitude; Type: COMMENT; Schema: public; Owner: postgres
@@ -114,11 +115,11 @@ COMMENT ON COLUMN aircraftreports.report_location IS 'Encoded lat/lon of report 
 COMMENT ON COLUMN aircraftreports.report_epoch IS 'Timestamp of report as seconds from epoch.';
 
 --
--- Name: hex_idx; Type: INDEX; Schema: public; Owner: postgres
+-- Name: mode_s_hex_idx; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX hex_idx
-  ON aircraftreports USING BTREE (hex);
+CREATE INDEX mode_s_hex_idx
+  ON aircraftreports USING BTREE (mode_s_hex);
 
 --
 -- Name: pr_epoch; Type: INDEX; Schema: public; Owner: postgres
