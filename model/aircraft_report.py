@@ -157,13 +157,8 @@ class AircraftReport(object):
                       self.hex, self.squawk, flight_format.format(self.flight),
                       reporter_format.format(self.reporter), self.time, self.messages]
             # TODO: Refactor with proper ORM to avoid SQLi vulns
-            sql = '''
-        UPDATE aircraftreports SET (hex, squawk, flight, is_metric, "is_MLAT", altitude, speed, 
-                                    vert_rate, bearing, report_location, latitude83, longitude83, 
-                                    messages_sent, report_epoch, reporter, rssi, nucp, is_ground)
-        VALUES (%s, %s, %s, %s, %s, %s, %s,
-                %s, %s, ST_PointFromText(%s, 4326), %s, %s,
-                    %s, %s, %s, %s, %s, %s)
+            sql = '''UPDATE aircraftreports SET (hex, squawk, flight, is_metric, is_MLAT, altitude, speed, vert_rate, bearing, report_location, latitude83, longitude83, messages_sent, report_epoch, reporter, rssi, nucp, is_ground)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, ST_PointFromText(%s, 4326), %s, %s, %s, %s, %s, %s, %s, %s)
             WHERE hex like %s and squawk like %s and flight like %s and reporter like %s
             and report_epoch = %s and messages_sent = %s'''
 
@@ -226,80 +221,23 @@ def get_aircraft_data_from_url(url_string, url_params=None):
     Returns:
         A list of AircraftReports
     """
-    cur_time = time.time()
+    current_report_pulled_time = time.time()
     if url_params:
         response = requests.get(url_string, params=url_params)
     else:
         response = requests.get(url_string)
     data = json.loads(response.text)
 
-    # Check for dump1090_mutability style of interface
+    # Check for dump1090 JSON Schema (should contain array of report within an aircraft key)
     if 'aircraft' in data:
-        reports_list = []
-        for pl in data['aircraft']:
-            valid = True
-            for keywrd in DUMP1090_MIN:
-                if keywrd not in pl:
-                    valid = False
-                    break
-            if valid:
-                if pl['altitude'] == 'ground':
-                    pl['altitude'] = 0
-                    plane = AircraftReport(**pl)
-                    setattr(plane, 'isGnd', True)
-                else:
-                    plane = AircraftReport(**pl)
-                    setattr(plane, 'isGnd', False)
-                setattr(plane, 'validposition', 1)
-                setattr(plane, 'validtrack', 1)
+        reports_list = ingest_dump1090_report_list(data['aircraft'])
 
-                # mutability has mlat set to list of attrs mlat'ed - we want bool
-                if 'mlat' not in pl:
-                    setattr(plane, 'mlat', False)
-                else:
-                    setattr(plane, 'mlat', True)
-
-                logger.debug(plane.to_json())
-                reports_list.append(plane)
-
-    # VRS style - adsbexchange.com        
+    # VRS style - adsbexchange.com
     elif 'acList' in data:
         reports_list = []
-        for pl in data['acList']:
-            valid = True
-            for keywrd in VRS_KEYWORDS:
-                if keywrd not in pl:
-                    valid = False
-                    break
-            if valid:
-                mytime = pl['PosTime'] / 1000
-                hex = pl['Icao'].lower()
-                altitude = pl['Alt']
-                speed = pl['Spd']
-                squawk = pl['Sqk']
-                if 'Call' in pl:
-                    flight = flight_format.format(pl['Call'])
-                else:
-                    flight = ' '
-                track = pl['Trak']
-                lon = pl['Long']
-                lat = pl['Lat']
-                isGnd = pl['Gnd']
-                messages = pl['CMsgs']
-                mlat = pl['Mlat']
-
-                if 'Vsi' in pl:
-                    vert_rate = pl['Vsi']
-                else:
-                    vert_rate = 0.0
-                isMetric = False
-                seen = seen_pos = (cur_time - mytime)
-                plane = AircraftReport(hex=hex, time=mytime, speed=speed, squawk=squawk, flight=flight,
-                                       altitude=altitude, isMetric=False,
-                                       track=track, lon=lon, lat=lat, vert_rate=vert_rate, seen=seen,
-                                       validposition=1, validtrack=1, reporter="", mlat=mlat, isGnd=isGnd,
-                                       report_location=None, messages=messages, seen_pos=seen_pos, category=None)
-                reports_list.append(plane)
+        for vrs_report in data['acList']:
+            vrs_aircraft_report_parsed = ingest_vrs_format_record(vrs_report, current_report_pulled_time)
+            reports_list.append(vrs_aircraft_report_parsed)
 
     else:
         reports_list = [AircraftReport(**pl) for pl in data]
@@ -320,3 +258,79 @@ def load_aircraft_reports_list_into_db(aircraft_reports_list, radio_receiver, db
             logger.error("Dropped report " + aircraft.to_JSON())
     if dbconn:
         dbconn.commit()
+
+
+def ingest_vrs_format_record(vrs_aircraft_report, report_pulled_timestamp):
+    logger.debug('Ingest VRS Format')
+    valid = True
+    for key_name in VRS_KEYWORDS:
+        if key_name not in vrs_aircraft_report:
+            valid = False
+            break
+    if valid:
+        report_position_time = vrs_aircraft_report['PosTime'] / 1000
+        hex = vrs_aircraft_report['Icao'].lower()
+        altitude = vrs_aircraft_report['Alt']
+        speed = vrs_aircraft_report['Spd']
+        squawk = vrs_aircraft_report['Sqk']
+        if 'Call' in vrs_aircraft_report:
+            flight = flight_format.format(vrs_aircraft_report['Call'])
+        else:
+            flight = ' '
+        track = vrs_aircraft_report['Trak']
+        lon = vrs_aircraft_report['Long']
+        lat = vrs_aircraft_report['Lat']
+        isGnd = vrs_aircraft_report['Gnd']
+        messages = vrs_aircraft_report['CMsgs']
+        mlat = vrs_aircraft_report['Mlat']
+
+        if 'Vsi' in vrs_aircraft_report:
+            vert_rate = vrs_aircraft_report['Vsi']
+        else:
+            vert_rate = 0.0
+        is_metric = False
+        seen = seen_pos = (report_pulled_timestamp - report_position_time)
+        plane = AircraftReport(hex=hex, time=report_position_time, speed=speed, squawk=squawk, flight=flight,
+                               altitude=altitude, isMetric=is_metric,
+                               track=track, lon=lon, lat=lat, vert_rate=vert_rate, seen=seen,
+                               validposition=1, validtrack=1, reporter="", mlat=mlat, isGnd=isGnd,
+                               report_location=None, messages=messages, seen_pos=seen_pos, category=None)
+
+        return plane
+
+
+def ingest_dump1090_report_list(dumpfmt_aircraft_report):
+    dump1090_ingested_reports_list = []
+    for dumpfmt_aircraft_report in dumpfmt_aircraft_report:
+        logger.debug('Ingest Dump1090 Format')
+
+        valid = True
+        for key_name in DUMP1090_MIN:
+            if key_name not in dumpfmt_aircraft_report:
+                valid = False
+                break
+        if valid:
+            if dumpfmt_aircraft_report['altitude'] == 'ground':
+                dumpfmt_aircraft_report['altitude'] = 0
+                dump1090_aircraft_report = AircraftReport(**dumpfmt_aircraft_report)
+                setattr(dump1090_aircraft_report, 'isGnd', True)
+            else:
+                dump1090_aircraft_report = AircraftReport(**dumpfmt_aircraft_report)
+                setattr(dump1090_aircraft_report, 'isGnd', False)
+            setattr(dump1090_aircraft_report, 'validposition', 1)
+            setattr(dump1090_aircraft_report, 'validtrack', 1)
+
+            # mutability dump1090 has mlat set to list of attributes mlat'ed, we want a boolean
+            if 'mlat' not in dumpfmt_aircraft_report:
+                setattr(dump1090_aircraft_report, 'mlat', False)
+            else:
+                setattr(dump1090_aircraft_report, 'mlat', True)
+
+            logger.info(dump1090_aircraft_report.to_json())
+
+            dump1090_ingested_reports_list.append(dump1090_aircraft_report)
+
+        else:
+            logger.debug('Skipping this invalid Dump1090 report: ' + json.dumps(dumpfmt_aircraft_report))
+
+    return dump1090_ingested_reports_list
