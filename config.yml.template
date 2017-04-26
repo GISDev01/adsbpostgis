@@ -18,3 +18,5 @@ database:
     dbname: 'adsb'
     user: 'postgres'
     pwd: 'pwdhere'
+
+waittimesec: 1

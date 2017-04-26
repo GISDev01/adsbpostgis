@@ -29,6 +29,8 @@ db_name = config['database']['dbname']
 db_user = config['database']['user']
 db_pwd = config['database']['pwd']
 
+sleep_time_sec = config['waittimesec']
+
 # TODO: set in config
 total_samples_cutoff_val = 1000
 
@@ -54,7 +56,6 @@ def crank_it_up():
 
         current_reports_list = aircraft_report.get_aircraft_data_from_url(aircraft_data_url1)
         if len(current_reports_list) > 0:
-            print(current_reports_list)
             aircraft_report.load_aircraft_reports_list_into_db(
                 aircraft_reports_list=current_reports_list,
                 radio_receiver=radio_receiver_1,
@@ -63,7 +64,7 @@ def crank_it_up():
         current_time_2 = time.time()
         logger.info(str(current_time_2 - current_time_1) + ' seconds for data pull')
         total_samples_count += 1
-        time.sleep(5)
+        time.sleep(sleep_time_sec)
 
 
 if __name__ == '__main__':
