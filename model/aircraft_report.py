@@ -1,10 +1,11 @@
 """
-Aircraft report defined as a record from the mode-s BEAST feed.
-Each report is sent to Kafka for ingestion into Postgres
+Aircraft report defined as a record from the mode-s BEAST feed
+Each report is sent to Kafka for ingestion into Postgres/PostGIS and a Storm Spout
 """
 
 import json
 import logging
+import os
 import time
 
 import requests
@@ -13,9 +14,8 @@ from utils import mathutils
 
 logger = logging.getLogger(__name__)
 
-KNOTS_TO_KMH = 1.852
-FEET_TO_METERS = 0.3048
-
+knots_to_kmh = 1.852
+ft_to_meters = 0.3048
 reporter_format = "{:10.10}"
 flight_format = "{:8.8}"
 
@@ -28,26 +28,26 @@ https://github.com/stephen-hocking/ads-b-logger
 # The dump1090mutable has a far richer json interface, where the planes are
 # found via http://localhost:8080/data/aircraft.json, which is itself
 # a multilevel JSON document.
-DUMP1090_MIN = ["hex", "lat", "lon", "altitude", "track", "speed"]
-DUMP1090_ANTIREZ = DUMP1090_MIN + ["flight"]
-DUMP1090_MALROBB = DUMP1090_ANTIREZ + ["squawk", "validposition", "vert_rate",
+dump1090_minimum_keynames = ["hex", "lat", "lon", "altitude", "track", "speed"]
+dump1090_antirez_keynames = dump1090_minimum_keynames + ["flight"]
+dump1090_malrobb_keynames = dump1090_antirez_keynames + ["squawk", "validposition", "vert_rate",
                                        "validtrack", "messages", "seen"]
-DUMP1090_PIAWARE = DUMP1090_MALROBB + ["mlat"]
+dump1090_piaware_keynames = dump1090_malrobb_keynames + ["mlat"]
 
-MUTABLE_EXTRAS = ["nucp", "seen_pos", "category", "rssi"]
+mutable_extra_keynames = ["nucp", "seen_pos", "category", "rssi"]
 
-DUMP1090_FULLMUT = DUMP1090_MALROBB + MUTABLE_EXTRAS
-DUMP1090_MINMUT = ["hex", "rssi", "seen"]
+dump1090_full_mutable_keynames = dump1090_malrobb_keynames + mutable_extra_keynames
+dump1090_minimum_mutable_keynames = ["hex", "rssi", "seen"]
 
 # The mutable branch has variable members in each aircraft list.
-MUTABLE_TRYLIST = list(set(DUMP1090_FULLMUT) - set(DUMP1090_MINMUT))
-DUMP1090_DBADD = ["isMetric", "time", "reporter", "isGnd", "report_location"]
-DUMP1090_DBLIST = list(set(DUMP1090_PIAWARE + DUMP1090_DBADD) - set(["seen"]))
-DUMP1090_FULL = DUMP1090_FULLMUT + DUMP1090_DBADD
+mutable_keynames_try = list(set(dump1090_full_mutable_keynames) - set(dump1090_minimum_mutable_keynames))
+dump1090_database_add_keynames = ["isMetric", "time", "reporter", "isGnd", "report_location"]
+dump1090_database_keynames = list(set(dump1090_piaware_keynames + dump1090_database_add_keynames) - set(["seen"]))
+dump1090_all_keynames = dump1090_full_mutable_keynames + dump1090_database_add_keynames
 
-VRS_KEYWORDS = ["PosTime", "Icao", "Alt", "Spd", "Sqk", "Trak", "Long", "Lat", "Gnd",
+adsb_vrs_keynames = ["PosTime", "Icao", "Alt", "Spd", "Sqk", "Trak", "Long", "Lat", "Gnd",
                 "CMsgs", "Mlat"]
-VRSFILE_KEYWORDS = VRS_KEYWORDS + ["Cos", "TT"]
+vrs_adsb_file_keynames = adsb_vrs_keynames + ["Cos", "TT"]
 
 
 class AircraftReport(object):
@@ -77,11 +77,12 @@ class AircraftReport(object):
     messages = 0
     seen_pos = -1
     category = None
+    is_anon = None
 
     def __init__(self, **kwargs):
         # Dynamic unpacking of the object's input JSON, since we need to support various formats with
         # many possibilities of which dict keys exist or don't exist, so we loop through and check them all
-        for keyword in DUMP1090_FULL:
+        for keyword in dump1090_all_keynames:
             try:
                 setattr(self, keyword, kwargs[keyword])
             except KeyError:
@@ -90,37 +91,43 @@ class AircraftReport(object):
         if not self.is_metric:
             self.convert_to_metric()
 
-        is_ground = getattr(self, 'isGnd', None)
-        if is_ground is None:
+        _is_ground = getattr(self, 'isGnd', None)
+        if _is_ground is None:
             if self.altitude == 0:
                 setattr(self, 'isGnd', True)
             else:
                 setattr(self, 'isGnd', False)
 
-        multi_lat = getattr(self, 'mlat', None)
-        if multi_lat is None:
+        _multi_lat = getattr(self, 'mlat', None)
+        if _multi_lat is None:
             setattr(self, 'mlat', False)
 
-        signal_strength = getattr(self, 'rssi', None)
-        if signal_strength is None:
+        _signal_strength = getattr(self, 'rssi', None)
+        if _signal_strength is None:
             setattr(self, 'rssi', None)
 
-        is_nucp = getattr(self, 'nucp', None)
-        if is_nucp is None:
+        _is_nucp = getattr(self, 'nucp', None)
+        if _is_nucp is None:
             setattr(self, 'nucp', -1)
+
+        _hex = getattr(self, 'mode_s_hex', None)
+        if _hex is None:
+            setattr(self, 'is_anon', False)
+        elif _hex[0] == '~':
+            setattr(self, 'is_anon', True)
 
     def convert_to_metric(self):
         """Converts aircraft report to use metric units"""
-        self.vert_rate = self.vert_rate * FEET_TO_METERS
-        self.altitude = int(self.altitude * FEET_TO_METERS)
-        self.speed = int(self.speed * KNOTS_TO_KMH)
+        self.vert_rate = self.vert_rate * ft_to_meters
+        self.altitude = int(self.altitude * ft_to_meters)
+        self.speed = int(self.speed * knots_to_kmh)
         self.is_metric = True
 
     def convert_from_metric_to_us(self):
         """Converts aircraft report to knots/feet"""
-        self.vert_rate = self.vert_rate / FEET_TO_METERS
-        self.altitude = int(self.altitude / FEET_TO_METERS)
-        self.speed = int(self.speed / KNOTS_TO_KMH)
+        self.vert_rate = self.vert_rate / ft_to_meters
+        self.altitude = int(self.altitude / ft_to_meters)
+        self.speed = int(self.speed / knots_to_kmh)
         self.is_metric = False
 
     def __str__(self):
@@ -128,22 +135,21 @@ class AircraftReport(object):
                   if not k.startswith("_")]
         return "{}(\n{})".format(self.__class__.__name__, '\n'.join(fields))
 
-    # Creates a representation that can be loaded from a single text line
     def to_json(self):
         """Returns a JSON representation of an aircraft report on one line"""
         return json.dumps(self, default=lambda o: o.__dict__, sort_keys=True, separators=(',', ':'))
 
-    # Log this report to the database
     def send_aircraft_to_db(self, database_connection, update=False):
         """
         Send this JSON record into the DB in an open connection
+        
         :param database_connection: Open database connection
         :param update: bool to indicate an update or insert (TODO: use upsert)
-        :return: 
+        :return: None
         """
 
         # Need to extract datetime fields from time
-        # Need to encode lat/lon appropriately
+        # Need to encode lat/lon appropriately for PostGIS storage (spatially indexed)
         cur = database_connection.cursor()
         coordinates = "POINT(%s %s)" % (self.lon, self.lat)
         if update:
@@ -153,10 +159,10 @@ class AircraftReport(object):
                       self.messages, self.time, self.reporter,
                       self.rssi, self.nucp, self.isGnd,
                       self.mode_s_hex, self.squawk, flight_format.format(self.flight),
-                      reporter_format.format(self.reporter), self.time, self.messages]
+                      reporter_format.format(self.reporter), self.time, self.messages, self.is_anon]
             # TODO: Refactor with proper ORM to avoid SQLi vulns
-            sql = '''UPDATE aircraftreports SET (mode_s_hex, squawk, flight, is_metric, is_mlat, altitude, speed, vert_rate, bearing, report_location, latitude83, longitude83, messages_sent, report_epoch, reporter, rssi, nucp, is_ground)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, ST_PointFromText(%s, 4326), %s, %s, %s, %s, %s, %s, %s, %s)
+            sql = '''UPDATE aircraftreports SET (mode_s_hex, squawk, flight, is_metric, is_mlat, altitude, speed, vert_rate, bearing, report_location, latitude83, longitude83, messages_sent, report_epoch, reporter, rssi, nucp, is_ground, is_anon)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, ST_PointFromText(%s, 4326), %s, %s, %s, %s, %s, %s, %s, %s, %s)
             WHERE mode_s_hex like %s and squawk like %s and flight like %s and reporter like %s
             and report_epoch = %s and messages_sent = %s'''
 
@@ -165,9 +171,9 @@ class AircraftReport(object):
                       self.mlat, self.altitude, self.speed, self.vert_rate,
                       self.track, coordinates, self.lat, self.lon,
                       self.messages, self.time, self.reporter,
-                      self.rssi, self.nucp, self.isGnd]
-            sql = '''INSERT into aircraftreports (mode_s_hex, squawk, flight, is_metric, is_mlat, altitude, speed, vert_rate, bearing, report_location, latitude83, longitude83, messages_sent, report_epoch, reporter, rssi, nucp, is_ground)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, ST_PointFromText(%s, 4326), %s, %s, %s, %s, %s, %s, %s, %s);'''
+                      self.rssi, self.nucp, self.isGnd, self.is_anon]
+            sql = '''INSERT into aircraftreports (mode_s_hex, squawk, flight, is_metric, is_mlat, altitude, speed, vert_rate, bearing, report_location, latitude83, longitude83, messages_sent, report_epoch, reporter, rssi, nucp, is_ground, is_anon)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, ST_PointFromText(%s, 4326), %s, %s, %s, %s, %s, %s, %s, %s, %s);'''
 
         logger.info(cur.mogrify(sql, params))
         cur.execute(sql, params)
@@ -244,6 +250,96 @@ def get_aircraft_data_from_url(url_string, url_params=None):
     return reports_list
 
 
+def get_aircraft_data_from_files(file_directory):
+    """
+    Sample record:
+    {"acList":[
+{"Id":10981358,"Rcvr":1,"HasSig":true,"Sig":31,"Icao":"A78FEE","Bad":false,"FSeen":"\/Date(1492992031138)\/","CMsgs":1,"AltT":0,"Tisb":false,"TrkH":false,"Sqk":"1200","Help":false,"VsiT":0,"WTC":0,"Species":0,"EngType":0,"EngMount":0,"Mil":false,"Cou":"United States","HasPic":false,"Interested":false,"FlightsCount":0,"Gnd":true,"SpdTyp":0,"CallSus":false,"TT":"a","Trt":1}, ... ]}
+    Args:
+        file_directory: A string containing a filepath
+
+    Returns:
+        A list of AircraftReports
+    """
+
+    files_to_process = []
+    for file in os.listdir(file_directory):
+        if file.endswith('.json'):
+            logger.debug('Found Aircraft data file: ' + str(os.path.join(file_directory, file)))
+            files_to_process.append(os.path.join(file_directory, file))
+
+    for json_file in files_to_process:
+        file_data = json.load(json_file)
+        for aircraft_record in file_data['acList']:
+            valid = True
+            for json_key_name in vrs_adsb_file_keynames:
+                if json_key_name not in aircraft_record:
+                    valid = False
+                    break
+            if valid:
+                mytime = aircraft_record['PosTime'] / 1000
+                hex = aircraft_record['Icao'].lower()
+                altitude = aircraft_record['Alt']
+                speed = aircraft_record['Spd']
+                squawk = aircraft_record['Sqk']
+                if 'Call' in aircraft_record:
+                    flight = flight_format.format(aircraft_record['Call'])
+                else:
+                    flight = ' '
+                track = aircraft_record['Trak']
+                lon = aircraft_record['Long']
+                lat = aircraft_record['Lat']
+                isGnd = aircraft_record['Gnd']
+                messages = aircraft_record['CMsgs']
+                mlat = aircraft_record['Mlat']
+                TT = aircraft_record['TT']
+
+                if 'Vsi' in aircraft_record:
+                    vert_rate = aircraft_record['Vsi']
+                else:
+                    vert_rate = 0.0
+                isMetric = False
+                Cos = aircraft_record['Cos']
+                if TT == 'a' or TT == 's':
+                    numpos = len(Cos) / 4
+                    for i in range(int(numpos)):
+                        if Cos[(i * 4) + 3]:
+                            if TT == 'a':
+                                altitude = Cos[(i * 4) + 3]
+                            elif TT == 's':
+                                speed = Cos[(i * 4) + 3]
+                            lat = Cos[(i * 4) + 0]
+                            lon = Cos[(i * 4) + 1]
+                            if lat < -90.0 or lat > 90.0 or lon < -180.0 or lon > 180.0:
+                                continue
+                            mytime = Cos[(i * 4) + 2] / 1000
+                            seen = seen_pos = 0
+                            plane = PlaneReport(hex=hex, time=mytime, speed=speed, squawk=squawk, flight=flight,
+                                                altitude=altitude, isMetric=False,
+                                                track=track, lon=lon, lat=lat, vert_rate=vert_rate, seen=seen,
+                                                validposition=1, validtrack=1, reporter="", mlat=mlat, isGnd=isGnd,
+                                                report_location=None, messages=messages, seen_pos=seen_pos,
+                                                category=None)
+                            retlist.append(plane)
+
+    data = json.loads(response.text)
+
+    # Check for dump1090 JSON Schema (should contain array of report within an aircraft key)
+    if 'aircraft' in data:
+        reports_list = ingest_dump1090_report_list(data['aircraft'])
+
+    # VRS style - adsbexchange.com
+    elif 'acList' in data:
+        reports_list = []
+        for vrs_report in data['acList']:
+            vrs_aircraft_report_parsed = ingest_vrs_format_record(vrs_report, current_report_pulled_time)
+            reports_list.append(vrs_aircraft_report_parsed)
+
+    else:
+        reports_list = [AircraftReport(**pl) for pl in data]
+    return reports_list
+
+
 def load_aircraft_reports_list_into_db(aircraft_reports_list, radio_receiver, dbconn):
     current_timestamp = int(time.time())
     for aircraft in aircraft_reports_list:
@@ -263,7 +359,7 @@ def load_aircraft_reports_list_into_db(aircraft_reports_list, radio_receiver, db
 def ingest_vrs_format_record(vrs_aircraft_report, report_pulled_timestamp):
     logger.debug('Ingest VRS Format')
     valid = True
-    for key_name in VRS_KEYWORDS:
+    for key_name in adsb_vrs_keynames:
         if key_name not in vrs_aircraft_report:
             valid = False
             break
@@ -289,7 +385,10 @@ def ingest_vrs_format_record(vrs_aircraft_report, report_pulled_timestamp):
         else:
             vert_rate = 0.0
         is_metric = False
-        seen = seen_pos = (report_pulled_timestamp - report_position_time)
+        if report_pulled_timestamp is not None
+            seen = seen_pos = (report_pulled_timestamp - report_position_time)
+        else:
+            seen_pos = 0
         plane = AircraftReport(hex=hex, time=report_position_time, speed=speed, squawk=squawk, flight=flight,
                                altitude=altitude, isMetric=is_metric,
                                track=track, lon=lon, lat=lat, vert_rate=vert_rate, seen=seen,
@@ -305,7 +404,7 @@ def ingest_dump1090_report_list(dumpfmt_aircraft_report_list):
         logger.debug('Ingest Dump1090 Format')
 
         valid = True
-        for key_name in DUMP1090_MIN:
+        for key_name in dump1090_minimum_keynames:
             if key_name not in dumpfmt_aircraft_report:
                 valid = False
                 break
