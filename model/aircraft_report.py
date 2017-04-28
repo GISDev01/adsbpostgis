@@ -385,7 +385,7 @@ def ingest_vrs_format_record(vrs_aircraft_report, report_pulled_timestamp):
         else:
             vert_rate = 0.0
         is_metric = False
-        if report_pulled_timestamp is not None
+        if report_pulled_timestamp is not None:
             seen = seen_pos = (report_pulled_timestamp - report_position_time)
         else:
             seen_pos = 0
