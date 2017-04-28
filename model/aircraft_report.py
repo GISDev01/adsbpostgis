@@ -277,8 +277,8 @@ def get_aircraft_data_from_files(file_directory):
                     valid = False
                     break
             if valid:
-                mytime = aircraft_record['PosTime'] / 1000
-                hex = aircraft_record['Icao'].lower()
+                report_time = aircraft_record['PosTime'] / 1000
+                mode_s_hex = aircraft_record['Icao'].lower()
                 altitude = aircraft_record['Alt']
                 speed = aircraft_record['Spd']
                 squawk = aircraft_record['Sqk']
@@ -287,40 +287,49 @@ def get_aircraft_data_from_files(file_directory):
                 else:
                     flight = ' '
                 track = aircraft_record['Trak']
-                lon = aircraft_record['Long']
-                lat = aircraft_record['Lat']
-                isGnd = aircraft_record['Gnd']
+                long83 = aircraft_record['Long']
+                lat83 = aircraft_record['Lat']
+
+                is_ground = aircraft_record['Gnd']
                 messages = aircraft_record['CMsgs']
                 mlat = aircraft_record['Mlat']
-                TT = aircraft_record['TT']
+                tt = aircraft_record['TT']
 
                 if 'Vsi' in aircraft_record:
                     vert_rate = aircraft_record['Vsi']
                 else:
                     vert_rate = 0.0
-                isMetric = False
-                Cos = aircraft_record['Cos']
-                if TT == 'a' or TT == 's':
-                    numpos = len(Cos) / 4
+                is_metric = False
+
+                past_track = aircraft_record['Cos']
+                if tt == 'a' or tt == 's':
+                    numpos = len(past_track) / 4
                     for i in range(int(numpos)):
-                        if Cos[(i * 4) + 3]:
-                            if TT == 'a':
-                                altitude = Cos[(i * 4) + 3]
-                            elif TT == 's':
-                                speed = Cos[(i * 4) + 3]
-                            lat = Cos[(i * 4) + 0]
-                            lon = Cos[(i * 4) + 1]
-                            if lat < -90.0 or lat > 90.0 or lon < -180.0 or lon > 180.0:
+                        if past_track[(i * 4) + 3]:
+                            if tt == 'a':
+                                altitude = past_track[(i * 4) + 3]
+                            elif tt == 's':
+                                speed = past_track[(i * 4) + 3]
+                            lat83 = past_track[(i * 4) + 0]
+                            long83 = past_track[(i * 4) + 1]
+                            if lat83 < -90.0 or lat83 > 90.0 or long83 < -180.0 or long83 > 180.0:
                                 continue
-                            mytime = Cos[(i * 4) + 2] / 1000
+                            report_time = past_track[(i * 4) + 2] / 1000
                             seen = seen_pos = 0
-                            plane = PlaneReport(hex=hex, time=mytime, speed=speed, squawk=squawk, flight=flight,
-                                                altitude=altitude, isMetric=False,
-                                                track=track, lon=lon, lat=lat, vert_rate=vert_rate, seen=seen,
-                                                validposition=1, validtrack=1, reporter="", mlat=mlat, isGnd=isGnd,
+                            plane = AircraftReport(hex=hex, time=report_position_time, speed=speed, squawk=squawk,
+                                                   flight=flight,
+                                                   altitude=altitude, isMetric=is_metric,
+                                                   track=track, lon=lon, lat=lat, vert_rate=vert_rate, seen=seen,
+                                                   validposition=1, validtrack=1, reporter="", mlat=mlat, isGnd=isGnd,
+                                                   report_location=None, messages=messages, seen_pos=seen_pos,
+                                                   category=None)
+                            record = AircraftReport(mode_s_hex=mode_s_hex, time=report_time, speed=speed, squawk=squawk, flight=flight,
+                                                altitude=altitude, isMetric=is_metric,
+                                                track=track, lon=long83, lat=lat83, vert_rate=vert_rate, seen=seen,
+                                                validposition=1, validtrack=1, reporter="", mlat=mlat, isGnd=is_ground,
                                                 report_location=None, messages=messages, seen_pos=seen_pos,
                                                 category=None)
-                            retlist.append(plane)
+                            retlist.append(record)
 
     data = json.loads(response.text)
 
