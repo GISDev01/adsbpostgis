@@ -31,7 +31,7 @@ https://github.com/stephen-hocking/ads-b-logger
 dump1090_minimum_keynames = ["hex", "lat", "lon", "altitude", "track", "speed"]
 dump1090_antirez_keynames = dump1090_minimum_keynames + ["flight"]
 dump1090_malrobb_keynames = dump1090_antirez_keynames + ["squawk", "validposition", "vert_rate",
-                                       "validtrack", "messages", "seen"]
+                                                         "validtrack", "messages", "seen"]
 dump1090_piaware_keynames = dump1090_malrobb_keynames + ["mlat"]
 
 mutable_extra_keynames = ["nucp", "seen_pos", "category", "rssi"]
@@ -41,12 +41,12 @@ dump1090_minimum_mutable_keynames = ["hex", "rssi", "seen"]
 
 # The mutable branch has variable members in each aircraft list.
 mutable_keynames_try = list(set(dump1090_full_mutable_keynames) - set(dump1090_minimum_mutable_keynames))
-dump1090_database_add_keynames = ["isMetric", "time", "reporter", "isGnd", "report_location"]
+dump1090_database_add_keynames = ["isMetric", "time", "reporter", "is_ground", "report_location"]
 dump1090_database_keynames = list(set(dump1090_piaware_keynames + dump1090_database_add_keynames) - set(["seen"]))
 dump1090_all_keynames = dump1090_full_mutable_keynames + dump1090_database_add_keynames
 
 adsb_vrs_keynames = ["PosTime", "Icao", "Alt", "Spd", "Sqk", "Trak", "Long", "Lat", "Gnd",
-                "CMsgs", "Mlat"]
+                     "CMsgs", "Mlat"]
 vrs_adsb_file_keynames = adsb_vrs_keynames + ["Cos", "TT"]
 
 
@@ -78,6 +78,10 @@ class AircraftReport(object):
     seen_pos = -1
     category = None
     is_anon = None
+    is_ground = None
+    mlat = None
+    rssi = None
+    nucp = None
 
     def __init__(self, **kwargs):
         # Dynamic unpacking of the object's input JSON, since we need to support various formats with
@@ -91,12 +95,12 @@ class AircraftReport(object):
         if not self.is_metric:
             self.convert_to_metric()
 
-        _is_ground = getattr(self, 'isGnd', None)
+        _is_ground = getattr(self, 'is_ground', None)
         if _is_ground is None:
             if self.altitude == 0:
-                setattr(self, 'isGnd', True)
+                setattr(self, 'is_ground', True)
             else:
-                setattr(self, 'isGnd', False)
+                setattr(self, 'is_ground', False)
 
         _multi_lat = getattr(self, 'mlat', None)
         if _multi_lat is None:
@@ -157,7 +161,7 @@ class AircraftReport(object):
                       self.mlat, self.altitude, self.speed, self.vert_rate,
                       self.track, coordinates, self.lat, self.lon,
                       self.messages, self.time, self.reporter,
-                      self.rssi, self.nucp, self.isGnd,
+                      self.rssi, self.nucp, self.is_ground,
                       self.mode_s_hex, self.squawk, flight_format.format(self.flight),
                       reporter_format.format(self.reporter), self.time, self.messages, self.is_anon]
             # TODO: Refactor with proper ORM to avoid SQLi vulns
@@ -171,7 +175,7 @@ class AircraftReport(object):
                       self.mlat, self.altitude, self.speed, self.vert_rate,
                       self.track, coordinates, self.lat, self.lon,
                       self.messages, self.time, self.reporter,
-                      self.rssi, self.nucp, self.isGnd, self.is_anon]
+                      self.rssi, self.nucp, self.is_ground, self.is_anon]
             sql = '''INSERT into aircraftreports (mode_s_hex, squawk, flight, is_metric, is_mlat, altitude, speed, vert_rate, bearing, report_location, latitude83, longitude83, messages_sent, report_epoch, reporter, rssi, nucp, is_ground, is_anon)
                     VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, ST_PointFromText(%s, 4326), %s, %s, %s, %s, %s, %s, %s, %s, %s);'''
 
@@ -269,6 +273,7 @@ def get_aircraft_data_from_files(file_directory):
             files_to_process.append(os.path.join(file_directory, file))
 
     for json_file in files_to_process:
+        file_report_list = []
         file_data = json.load(json_file)
         for aircraft_record in file_data['acList']:
             valid = True
@@ -316,22 +321,16 @@ def get_aircraft_data_from_files(file_directory):
                                 continue
                             report_time = past_track[(i * 4) + 2] / 1000
                             seen = seen_pos = 0
-                            plane = AircraftReport(hex=hex, time=report_position_time, speed=speed, squawk=squawk,
-                                                   flight=flight,
-                                                   altitude=altitude, isMetric=is_metric,
-                                                   track=track, lon=lon, lat=lat, vert_rate=vert_rate, seen=seen,
-                                                   validposition=1, validtrack=1, reporter="", mlat=mlat, isGnd=isGnd,
-                                                   report_location=None, messages=messages, seen_pos=seen_pos,
-                                                   category=None)
-                            record = AircraftReport(mode_s_hex=mode_s_hex, time=report_time, speed=speed, squawk=squawk, flight=flight,
-                                                altitude=altitude, isMetric=is_metric,
-                                                track=track, lon=long83, lat=lat83, vert_rate=vert_rate, seen=seen,
-                                                validposition=1, validtrack=1, reporter="", mlat=mlat, isGnd=is_ground,
-                                                report_location=None, messages=messages, seen_pos=seen_pos,
-                                                category=None)
-                            retlist.append(record)
+                            record = AircraftReport(mode_s_hex=mode_s_hex, time=report_time, speed=speed, squawk=squawk,
+                                                    flight=flight,
+                                                    altitude=altitude, isMetric=is_metric,
+                                                    track=track, lon=long83, lat=lat83, vert_rate=vert_rate, seen=seen,
+                                                    validposition=1, validtrack=1, reporter="", mlat=mlat,
+                                                    is_ground=is_ground,
+                                                    report_location=None, messages=messages, seen_pos=seen_pos,
+                                                    category=None)
+                            file_report_list.append(record)
 
-    data = json.loads(response.text)
 
     # Check for dump1090 JSON Schema (should contain array of report within an aircraft key)
     if 'aircraft' in data:
@@ -385,7 +384,7 @@ def ingest_vrs_format_record(vrs_aircraft_report, report_pulled_timestamp):
         track = vrs_aircraft_report['Trak']
         lon = vrs_aircraft_report['Long']
         lat = vrs_aircraft_report['Lat']
-        isGnd = vrs_aircraft_report['Gnd']
+        is_ground = vrs_aircraft_report['Gnd']
         messages = vrs_aircraft_report['CMsgs']
         mlat = vrs_aircraft_report['Mlat']
 
@@ -401,7 +400,7 @@ def ingest_vrs_format_record(vrs_aircraft_report, report_pulled_timestamp):
         plane = AircraftReport(hex=hex, time=report_position_time, speed=speed, squawk=squawk, flight=flight,
                                altitude=altitude, isMetric=is_metric,
                                track=track, lon=lon, lat=lat, vert_rate=vert_rate, seen=seen,
-                               validposition=1, validtrack=1, reporter="", mlat=mlat, isGnd=isGnd,
+                               validposition=1, validtrack=1, reporter="", mlat=mlat, is_ground=is_ground,
                                report_location=None, messages=messages, seen_pos=seen_pos, category=None)
 
         return plane
@@ -421,10 +420,10 @@ def ingest_dump1090_report_list(dumpfmt_aircraft_report_list):
             if dumpfmt_aircraft_report['altitude'] == 'ground':
                 dumpfmt_aircraft_report['altitude'] = 0
                 dump1090_aircraft_report = AircraftReport(**dumpfmt_aircraft_report)
-                setattr(dump1090_aircraft_report, 'isGnd', True)
+                setattr(dump1090_aircraft_report, 'is_ground', True)
             else:
                 dump1090_aircraft_report = AircraftReport(**dumpfmt_aircraft_report)
-                setattr(dump1090_aircraft_report, 'isGnd', False)
+                setattr(dump1090_aircraft_report, 'is_ground', False)
             setattr(dump1090_aircraft_report, 'validposition', 1)
             setattr(dump1090_aircraft_report, 'validtrack', 1)
 
