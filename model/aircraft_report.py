@@ -269,10 +269,12 @@ def get_aircraft_data_from_files(file_directory):
     files_to_process = []
     for file in os.listdir(file_directory):
         if file.endswith('.json'):
-            logger.debug('Found Aircraft data file: ' + str(os.path.join(file_directory, file)))
+            logger.debug('Found Aircraft data file: {}'.format(os.path.join(file_directory, file)))
             files_to_process.append(os.path.join(file_directory, file))
 
     for json_file in files_to_process:
+        logger.debug('Processing Aircraft JSON data file: {} '.format(json_file))
+
         file_report_list = []
         file_data = json.load(json_file)
         for aircraft_record in file_data['acList']:
@@ -306,6 +308,7 @@ def get_aircraft_data_from_files(file_directory):
                     vert_rate = 0.0
                 is_metric = False
 
+                # Calculate each position in the past track data and insert as an Aircraft record
                 past_track = aircraft_record['Cos']
                 if tt == 'a' or tt == 's':
                     numpos = len(past_track) / 4
@@ -331,21 +334,7 @@ def get_aircraft_data_from_files(file_directory):
                                                     category=None)
                             file_report_list.append(record)
 
-
-    # Check for dump1090 JSON Schema (should contain array of report within an aircraft key)
-    if 'aircraft' in data:
-        reports_list = ingest_dump1090_report_list(data['aircraft'])
-
-    # VRS style - adsbexchange.com
-    elif 'acList' in data:
-        reports_list = []
-        for vrs_report in data['acList']:
-            vrs_aircraft_report_parsed = ingest_vrs_format_record(vrs_report, current_report_pulled_time)
-            reports_list.append(vrs_aircraft_report_parsed)
-
-    else:
-        reports_list = [AircraftReport(**pl) for pl in data]
-    return reports_list
+    return file_report_list
 
 
 def load_aircraft_reports_list_into_db(aircraft_reports_list, radio_receiver, dbconn):
