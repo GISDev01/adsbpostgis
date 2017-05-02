@@ -19,9 +19,12 @@ logger = logging.getLogger(__name__)
 
 # config vars
 aircraft_data_url1 = config['feed1']['url']
-
 receiver1_lat83 = config['receiver1']['lat83']
 receiver1_long83 = config['receiver1']['long83']
+
+aircraft_data_url2 = config['feed2']['url']
+receiver2_lat83 = config['receiver2']['lat83']
+receiver2_long83 = config['receiver2']['long83']
 
 db_hostname = config['database']['hostname']
 db_port = config['database']['port']
@@ -44,6 +47,13 @@ radio_receiver_1 = report_receiver.RadioReceiver(name='piaware1',
                                                  type='raspi',
                                                  lat83=receiver1_lat83,
                                                  long83=receiver1_long83,
+                                                 data_access_url='',
+                                                 location="")
+
+radio_receiver_2 = report_receiver.RadioReceiver(name='piaware2',
+                                                 type='raspi',
+                                                 lat83=receiver2_lat83,
+                                                 long83=receiver2_long83,
                                                  data_access_url='',
                                                  location="")
 

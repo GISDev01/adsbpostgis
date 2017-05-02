@@ -8,6 +8,8 @@ import logging
 import os
 import time
 
+import main
+
 import requests
 
 from utils import mathutils
@@ -333,8 +335,8 @@ def get_aircraft_data_from_files(file_directory):
                                                     report_location=None, messages=messages, seen_pos=seen_pos,
                                                     category=None)
                             file_report_list.append(record)
+            load_aircraft_reports_list_into_db(file_report_list, {'name': 'historical_file'}, main.postgres_db_connection)
 
-    return file_report_list
 
 
 def load_aircraft_reports_list_into_db(aircraft_reports_list, radio_receiver, dbconn):
