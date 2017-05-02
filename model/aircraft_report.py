@@ -8,10 +8,9 @@ import logging
 import os
 import time
 
-import main
-
 import requests
 
+import main
 from utils import mathutils
 
 logger = logging.getLogger(__name__)
@@ -21,10 +20,6 @@ ft_to_meters = 0.3048
 reporter_format = "{:10.10}"
 flight_format = "{:8.8}"
 
-"""
-Partial original implementation of this class pulled from this repo: 
-https://github.com/stephen-hocking/ads-b-logger
-"""
 # A number of different implementations of dump1090 exist,
 # offering varying amounts of info from the auto-updating data.json
 # The dump1090mutable has a far richer json interface, where the planes are
@@ -50,6 +45,11 @@ dump1090_all_keynames = dump1090_full_mutable_keynames + dump1090_database_add_k
 adsb_vrs_keynames = ["PosTime", "Icao", "Alt", "Spd", "Sqk", "Trak", "Long", "Lat", "Gnd",
                      "CMsgs", "Mlat"]
 vrs_adsb_file_keynames = adsb_vrs_keynames + ["Cos", "TT"]
+
+"""
+Partial original implementation of this class pulled from this repo: 
+https://github.com/stephen-hocking/ads-b-logger
+"""
 
 
 class AircraftReport(object):
@@ -130,7 +130,7 @@ class AircraftReport(object):
         self.is_metric = True
 
     def convert_from_metric_to_us(self):
-        """Converts aircraft report to knots/feet"""
+        """Converts aircraft report to use Freedom units"""
         self.vert_rate = self.vert_rate / ft_to_meters
         self.altitude = int(self.altitude / ft_to_meters)
         self.speed = int(self.speed / knots_to_kmh)
@@ -185,20 +185,13 @@ class AircraftReport(object):
         cur.execute(sql, params)
         cur.close()
 
-    # Delete record - assuming sampling once a second, the combination of
-    # hex, report_epoch and reporter should be unique
     def delete_from_db(self, db_connection):
         """
-        Deletes the record that matches the plane report from the DB
-
-        Args:
-            db_connection: An existing DB connection
-
-        Returns:
-            Nothing much
-
-        Raises:
-            psycopg2 exceptions
+        Delete a record that matches this object - assuming sampling once a second, the combination of
+        mode_s_hex, report_epoch, and reporter should be unique
+        
+        :param db_connection: Open database connection
+        :return: 
         """
         cur = db_connection.cursor()
         sql = '''DELETE from aircraftreports WHERE '''
@@ -214,7 +207,6 @@ class AircraftReport(object):
         logger.info(cur.mogrify(sql))
         cur.execute(sql)
 
-    # Distance from another object with lat/lon
     def distance(self, other_location):
         """Returns distance in meters from another object with lat/lon"""
         return mathutils.haversine_distance_meters(self.lon, self.lat, other_location.lon, other_location.lat)
@@ -335,8 +327,8 @@ def get_aircraft_data_from_files(file_directory):
                                                     report_location=None, messages=messages, seen_pos=seen_pos,
                                                     category=None)
                             file_report_list.append(record)
-            load_aircraft_reports_list_into_db(file_report_list, {'name': 'historical_file'}, main.postgres_db_connection)
-
+            load_aircraft_reports_list_into_db(file_report_list, {'name': 'historical_file'},
+                                               main.postgres_db_connection)
 
 
 def load_aircraft_reports_list_into_db(aircraft_reports_list, radio_receiver, dbconn):

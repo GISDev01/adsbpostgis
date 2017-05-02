@@ -34,8 +34,7 @@ db_pwd = config['database']['pwd']
 
 sleep_time_sec = config['waittimesec']
 
-# TODO: set in config
-total_samples_cutoff_val = 1000
+total_samples_cutoff_val = config['samplescutoff']
 
 postgres_db_connection = pg_utils.database_connection(dbname=db_name,
                                                       dbhost=db_hostname,
@@ -58,8 +57,8 @@ radio_receiver_2 = report_receiver.RadioReceiver(name='piaware2',
                                                  location="")
 
 
-def crank_it_up():
-    logger.debug('Cranking it up.')
+def get_s_done():
+    logger.debug('Aircraft ingest beginning.')
     total_samples_count = 0
     while total_samples_count < total_samples_cutoff_val:
         current_time_1 = time.time()
@@ -79,4 +78,4 @@ def crank_it_up():
 
 if __name__ == '__main__':
     logger.debug('Entry from main.py main started')
-    crank_it_up()
+    get_s_done()
