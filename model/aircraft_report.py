@@ -121,7 +121,7 @@ class AircraftReport(object):
             setattr(self, 'is_anon', False)
         elif _hex[0] == '~':
             setattr(self, 'is_anon', True)
-            process_anon_detection()
+            self.process_anon_detection()
 
     def convert_to_metric(self):
         """Converts aircraft report to use metric units"""
@@ -213,6 +213,7 @@ class AircraftReport(object):
         return mathutils.haversine_distance_meters(self.lon, self.lat, other_location.lon, other_location.lat)
 
     def process_anon_detection(self):
+        pass
         adsbe_params = {
             'fNBnd': 33.94290171650591,
             'fEBnd': -97.09046957492819,
