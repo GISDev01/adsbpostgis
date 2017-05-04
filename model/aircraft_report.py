@@ -121,6 +121,7 @@ class AircraftReport(object):
             setattr(self, 'is_anon', False)
         elif _hex[0] == '~':
             setattr(self, 'is_anon', True)
+            process_anon_detection()
 
     def convert_to_metric(self):
         """Converts aircraft report to use metric units"""
@@ -211,17 +212,21 @@ class AircraftReport(object):
         """Returns distance in meters from another object with lat/lon"""
         return mathutils.haversine_distance_meters(self.lon, self.lat, other_location.lon, other_location.lat)
 
+    def process_anon_detection(self):
+        adsbe_params = {
+            'fNBnd': 33.94290171650591,
+            'fEBnd': -97.09046957492819,
+            'fSBnd': 33.82557994879984,
+            'fWBnd': -97.33457205295554,
+            'trFmt': 'fa'
+        }
+
 
 def get_aircraft_data_from_url(url_string, url_params=None):
     """
-    Reads JSON objects from a server at a URL (usually a dump1090 instance)
-
-    Args:
-        url_string: A string containing a URL (e.g. http://mydump1090:8080/data.json)
-        url_params: parameters used for filtering requests to adsbexchange.com
-
-    Returns:
-        A list of AircraftReports
+    :param url_string: string containing a URL (e.g. http://piaware1/dump1090-fa/data.json)
+    :param url_params: Only used for ADSBE data pulls
+    :return: list of AircraftReport objects
     """
     current_report_pulled_time = time.time()
 
@@ -229,14 +234,16 @@ def get_aircraft_data_from_url(url_string, url_params=None):
         response = requests.get(url_string, params=url_params)
     else:
         response = requests.get(url_string)
-
-    data = json.loads(response.text)
-
-    # Check for dump1090 JSON Schema (should contain array of report within an aircraft key)
+    try:
+        data = json.loads(response.text)
+    except:
+        logger.warning('Unable to parse the aircraft JSON from dump1090')
+        return []
+    # Check for dump1090 JSON Schema (should contain a list of reports with an aircraft key in the JSON)
     if 'aircraft' in data:
         reports_list = ingest_dump1090_report_list(data['aircraft'])
 
-    # VRS style - adsbexchange.com
+    # VRS style JSON Schema - such as the JSON from adsbexchange.com
     elif 'acList' in data:
         reports_list = []
         for vrs_report in data['acList']:
@@ -244,7 +251,9 @@ def get_aircraft_data_from_url(url_string, url_params=None):
             reports_list.append(vrs_aircraft_report_parsed)
 
     else:
+        # Wildcard format so we just load each JSON key directly into each AircraftReport object
         reports_list = [AircraftReport(**pl) for pl in data]
+
     return reports_list
 
 
