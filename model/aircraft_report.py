@@ -182,7 +182,7 @@ class AircraftReport(object):
             sql = '''INSERT into aircraftreports (mode_s_hex, squawk, flight, is_metric, is_mlat, altitude, speed, vert_rate, bearing, report_location, latitude83, longitude83, messages_sent, report_epoch, reporter, rssi, nucp, is_ground, is_anon)
                     VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, ST_PointFromText(%s, 4326), %s, %s, %s, %s, %s, %s, %s, %s, %s);'''
 
-        logger.info(cur.mogrify(sql, params))
+        logger.debug(cur.mogrify(sql, params))
         cur.execute(sql, params)
         cur.close()
 
@@ -205,7 +205,7 @@ class AircraftReport(object):
         sql = sql + (" and speed=%s " % self.speed)
         sql = sql + (" and messages_sent=%s" % self.messages)
 
-        logger.info(cur.mogrify(sql))
+        logger.debug(cur.mogrify(sql))
         cur.execute(sql)
 
     def distance(self, other_location):
@@ -213,14 +213,15 @@ class AircraftReport(object):
         return mathutils.haversine_distance_meters(self.lon, self.lat, other_location.lon, other_location.lat)
 
     def process_anon_detection(self):
-        pass
-        adsbe_params = {
-            'fNBnd': 33.94290171650591,
-            'fEBnd': -97.09046957492819,
-            'fSBnd': 33.82557994879984,
-            'fWBnd': -97.33457205295554,
-            'trFmt': 'fa'
-        }
+        logger.warning('Anon Mode S Hex detected: {}/{}'.format(self.lat, self.lon))
+        # pass
+        # adsbe_params = {
+        #     'fNBnd': 33.94290171650591,
+        #     'fEBnd': -97.09046957492819,
+        #     'fSBnd': 33.82557994879984,
+        #     'fWBnd': -97.33457205295554,
+        #     'trFmt': 'fa'
+        # }
 
 
 def get_aircraft_data_from_url(url_string, url_params=None):
@@ -350,7 +351,7 @@ def load_aircraft_reports_list_into_db(aircraft_reports_list, radio_receiver, db
             if dbconn:
                 aircraft.send_aircraft_to_db(dbconn)
             else:
-                logger.info(aircraft)
+                logger.warning('No DB Connection. Aircraft not inserted; {}'.format(aircraft))
         else:
             logger.error("Dropped report " + aircraft.to_JSON())
     if dbconn:
@@ -427,7 +428,7 @@ def ingest_dump1090_report_list(dumpfmt_aircraft_report_list):
                 setattr(dump1090_aircraft_report, 'mlat', True)
 
             setattr(dump1090_aircraft_report, 'mode_s_hex', dumpfmt_aircraft_report['hex'])
-            logger.info(dump1090_aircraft_report.to_json())
+            logger.debug(dump1090_aircraft_report.to_json())
 
             dump1090_ingested_reports_list.append(dump1090_aircraft_report)
 

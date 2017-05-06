@@ -14,7 +14,7 @@ with open("config.yml", 'r') as yaml_config_file:
 
 # log_formatter = logging.Formatter("%(levelname)s: %(asctime)s - %(name)s - %(process)s - %(message)s")
 FORMAT = '%(asctime)-15s %(levelname)s: %(message)s'
-logging.basicConfig(level=logging.DEBUG, format=FORMAT)
+logging.basicConfig(level=logging.INFO, format=FORMAT)
 logger = logging.getLogger(__name__)
 
 # config vars
@@ -57,11 +57,11 @@ radio_receiver_2 = report_receiver.RadioReceiver(name='piaware2',
                                                  location="")
 
 
-def get_s_done():
-    logger.debug('Aircraft ingest beginning.')
+def harvest_aircraft_json_from_pi():
+    logger.info('Aircraft ingest beginning.')
     total_samples_count = 0
     while total_samples_count < total_samples_cutoff_val:
-        current_time_1 = time.time()
+        start_time = time.time()
 
         current_reports_list = aircraft_report.get_aircraft_data_from_url(aircraft_data_url1)
         if len(current_reports_list) > 0:
@@ -70,12 +70,12 @@ def get_s_done():
                 radio_receiver=radio_receiver_1,
                 dbconn=postgres_db_connection)
 
-        current_time_2 = time.time()
-        logger.info(str(current_time_2 - current_time_1) + ' seconds for data pull')
+        end_time = time.time()
+        logger.debug('{} seconds for data pull from Pi'.format((end_time - start_time)))
         total_samples_count += 1
         time.sleep(sleep_time_sec)
 
 
 if __name__ == '__main__':
     logger.debug('Entry from main.py main started')
-    get_s_done()
+    harvest_aircraft_json_from_pi()
