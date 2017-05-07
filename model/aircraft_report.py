@@ -116,12 +116,16 @@ class AircraftReport(object):
         if _is_nucp is None:
             setattr(self, 'nucp', -1)
 
-        _hex = getattr(self, 'mode_s_hex', None)
-        if _hex is None:
-            setattr(self, 'is_anon', False)
-        elif _hex[0] == '~':
+        _hex = getattr(self, 'hex', None)
+        if _hex is not None:
+            setattr(self, 'mode_s_hex', _hex)
+
+        # FA anonymizes the mode-s hex for certain aircraft, and denotes it with a ~ as the first character in the fake mode-s hex code they send back on the MLAT results
+        if _hex[0] == '~':
             setattr(self, 'is_anon', True)
             self.process_anon_detection()
+        else:
+            setattr(self, 'is_anon', False)
 
     def convert_to_metric(self):
         """Converts aircraft report to use metric units"""
@@ -213,7 +217,7 @@ class AircraftReport(object):
         return mathutils.haversine_distance_meters(self.lon, self.lat, other_location.lon, other_location.lat)
 
     def process_anon_detection(self):
-        logger.warning('Anon Mode S Hex detected: {}/{}'.format(self.lat, self.lon))
+        logger.warning('Anon Mode S Hex detected: {} - Location: {}/{}'.format(self.hex, self.lat, self.lon))
         # pass
         # adsbe_params = {
         #     'fNBnd': 33.94290171650591,
