@@ -23,7 +23,6 @@ def database_connection(dbname=None, dbuser=None, dbhost=None, dbpasswd=None, db
     """
     connection = None
 
-    # TODO: Pull dbname out into param/argument
     connect_str = "dbname=" + dbname + " user=" + dbuser + " host=" + \
                   dbhost + " password=" + dbpasswd + " port=" + str(dbport)
     try:

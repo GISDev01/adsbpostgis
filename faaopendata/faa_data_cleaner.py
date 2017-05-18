@@ -11,6 +11,8 @@ with open("MASTER.txt") as orig_file:
             # some of the data contains trailing spaces/tabs, so we remove those first
             new_row = [old_field_data.strip() for old_field_data in orig_record]
 
+            # convert Mode-S Hex to lowercase in the new CSV
+            new_row[33] = new_row[33].lower()
             # The data has a trailing comma on every single row (including the header row), so remove it as well
             new_row_without_trailing_comma = new_row[:-1]
 
