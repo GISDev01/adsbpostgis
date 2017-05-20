@@ -301,7 +301,7 @@ def get_aircraft_data_from_files(file_directory):
                 if 'Call' in aircraft_record:
                     flight = flight_format.format(aircraft_record['Call'])
                 else:
-                    flight = ' '
+                    flight = ''
                 track = aircraft_record['Trak']
                 long83 = aircraft_record['Long']
                 lat83 = aircraft_record['Lat']
@@ -333,13 +333,26 @@ def get_aircraft_data_from_files(file_directory):
                                 continue
                             report_time = past_track[(i * 4) + 2] / 1000
                             seen = seen_pos = 0
-                            record = AircraftReport(mode_s_hex=mode_s_hex, time=report_time, speed=speed, squawk=squawk,
+                            record = AircraftReport(mode_s_hex=mode_s_hex,
+                                                    time=report_time,
+                                                    speed=speed,
+                                                    squawk=squawk,
                                                     flight=flight,
-                                                    altitude=altitude, isMetric=is_metric,
-                                                    track=track, lon=long83, lat=lat83, vert_rate=vert_rate, seen=seen,
-                                                    validposition=1, validtrack=1, reporter="", mlat=mlat,
+                                                    altitude=altitude,
+                                                    isMetric=is_metric,
+                                                    track=track,
+                                                    lon=long83,
+                                                    lat=lat83,
+                                                    vert_rate=vert_rate,
+                                                    seen=seen,
+                                                    validposition=1,
+                                                    validtrack=1,
+                                                    reporter="",
+                                                    mlat=mlat,
                                                     is_ground=is_ground,
-                                                    report_location=None, messages=messages, seen_pos=seen_pos,
+                                                    report_location=None,
+                                                    messages=messages,
+                                                    seen_pos=seen_pos,
                                                     category=None)
                             file_report_list.append(record)
             load_aircraft_reports_list_into_db(file_report_list, {'name': 'historical_file'},
@@ -395,11 +408,27 @@ def ingest_vrs_format_record(vrs_aircraft_report, report_pulled_timestamp):
             seen = seen_pos = (report_pulled_timestamp - report_position_time)
         else:
             seen_pos = 0
-        plane = AircraftReport(hex=hex, time=report_position_time, speed=speed, squawk=squawk, flight=flight,
-                               altitude=altitude, isMetric=is_metric,
-                               track=track, lon=lon, lat=lat, vert_rate=vert_rate, seen=seen,
-                               validposition=1, validtrack=1, reporter="", mlat=mlat, is_ground=is_ground,
-                               report_location=None, messages=messages, seen_pos=seen_pos, category=None)
+        plane = AircraftReport(hex=hex,
+                               time=report_position_time,
+                               speed=speed,
+                               squawk=squawk,
+                               flight=flight,
+                               altitude=altitude,
+                               isMetric=is_metric,
+                               track=track,
+                               lon=lon,
+                               lat=lat,
+                               vert_rate=vert_rate,
+                               seen=seen,
+                               validposition=1,
+                               validtrack=1,
+                               reporter="",
+                               mlat=mlat,
+                               is_ground=is_ground,
+                               report_location=None,
+                               messages=messages,
+                               seen_pos=seen_pos,
+                               category=None)
 
         return plane
 
