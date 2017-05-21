@@ -2,6 +2,8 @@ config.yml
 /sql/scratch.sql
 /externaldata/faaopendata/MASTER.txt
 /externaldata/faaopendata/MASTER_CLEANED.csv
+/externaldata/faaopendata/faadata_metadata.pdf
+
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -93,3 +95,4 @@ ENV/
 # Rope project settings
 .ropeproject
 .idea/
+/externaldata/faaopendata/faadata_metadata.pdf
