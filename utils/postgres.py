@@ -12,6 +12,7 @@ def database_connection(dbname=None, dbuser=None, dbhost=None, dbpasswd=None, db
     Makes a connection to a Postgres DB
 
     Args:
+        dbname: Contains name of database
         dbuser: Contains name of database user to login (optional)
         dbhost: Name of host that DB is running on (optional)
         dbpasswd: Password for the DB account (optional)
@@ -28,7 +29,6 @@ def database_connection(dbname=None, dbuser=None, dbhost=None, dbpasswd=None, db
     try:
         connection = psycopg2.connect(connect_str)
     except:
-        print("Can't connect to aircraft report database with " + connect_str)
-        exit(-1)
+        logger.exception("Can't connect to aircraft report database with " + connect_str)
     return connection
 
