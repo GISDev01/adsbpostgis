@@ -15,6 +15,8 @@ import requests
 
 from utils import mathutils
 
+from model import report_receiver
+
 logger = logging.getLogger(__name__)
 
 knots_to_kmh = 1.852
@@ -277,6 +279,12 @@ def get_aircraft_data_from_files(file_directory):
     Returns:
         A list of AircraftReports
     """
+    radio_receiver_vrs = report_receiver.RadioReceiver(name='adsbearchive',
+                                                       type='vrs',
+                                                       lat83=0,
+                                                       long83=0,
+                                                       data_access_url='',
+                                                       location='')
 
     files_to_process = []
     for file in os.listdir(file_directory):
@@ -334,7 +342,6 @@ def get_aircraft_data_from_files(file_directory):
                             lat83 = past_track[(i * 4) + 0]
                             long83 = past_track[(i * 4) + 1]
                             if lat83 < -90.0 or lat83 > 90.0 or long83 < -180.0 or long83 > 180.0:
-
                                 continue
                             report_time = past_track[(i * 4) + 2] / 1000
                             seen = seen_pos = 0
@@ -360,8 +367,10 @@ def get_aircraft_data_from_files(file_directory):
                                                     seen_pos=seen_pos,
                                                     category=None)
                             file_report_list.append(record)
-            load_aircraft_reports_list_into_db(file_report_list, {'name': 'historical_file'},
-                                               main.postgres_db_connection)
+
+            load_aircraft_reports_list_into_db(aircraft_reports_list=file_report_list,
+                                               radio_receiver=radio_receiver_vrs,
+                                               dbconn=main.postgres_db_connection)
 
 
 def load_aircraft_reports_list_into_db(aircraft_reports_list, radio_receiver, dbconn):
