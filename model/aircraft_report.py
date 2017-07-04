@@ -122,7 +122,8 @@ class AircraftReport(object):
         if _hex is not None:
             setattr(self, 'mode_s_hex', _hex)
 
-        # FA anonymizes the mode-s hex for certain aircraft, and denotes it with a ~ as the first character in the fake mode-s hex code they send back on the MLAT results
+        # FA anonymizes the mode-s hex for certain aircraft, and denotes it with a ~ as
+        # the first character in the fake mode-s hex code they send back on the MLAT results
         if _hex[0] == '~':
             setattr(self, 'is_anon', True)
             self.process_anon_detection()
@@ -333,10 +334,11 @@ def get_aircraft_data_from_files(file_directory):
                             lat83 = past_track[(i * 4) + 0]
                             long83 = past_track[(i * 4) + 1]
                             if lat83 < -90.0 or lat83 > 90.0 or long83 < -180.0 or long83 > 180.0:
+
                                 continue
                             report_time = past_track[(i * 4) + 2] / 1000
                             seen = seen_pos = 0
-                            record = AircraftReport(mode_s_hex=mode_s_hex,
+                            record = AircraftReport(hex=mode_s_hex,
                                                     time=report_time,
                                                     speed=speed,
                                                     squawk=squawk,
@@ -379,15 +381,16 @@ def load_aircraft_reports_list_into_db(aircraft_reports_list, radio_receiver, db
 
 
 def ingest_vrs_format_record(vrs_aircraft_report, report_pulled_timestamp):
-    logger.debug('Ingest VRS Format')
+    logger.info('Ingesting VRS Format Record')
     valid = True
     for key_name in adsb_vrs_keynames:
         if key_name not in vrs_aircraft_report:
             valid = False
+            logger.exception('VRS Record key is invalid: {}'.format(key_name))
             break
     if valid:
         report_position_time = vrs_aircraft_report['PosTime'] / 1000
-        hex = vrs_aircraft_report['Icao'].lower()
+        hex = vrs_aircraft_report['Icao'].upper()
         altitude = vrs_aircraft_report['Alt']
         speed = vrs_aircraft_report['Spd']
         squawk = vrs_aircraft_report['Sqk']
