@@ -122,7 +122,7 @@ class AircraftReport(object):
 
         _hex = getattr(self, 'hex', None)
         if _hex is not None:
-            setattr(self, 'mode_s_hex', _hex)
+            setattr(self, 'mode_s_hex', _hex.upper())
 
         # FA anonymizes the mode-s hex for certain aircraft, and denotes it with a ~ as
         # the first character in the fake mode-s hex code they send back on the MLAT results
@@ -306,7 +306,7 @@ def get_aircraft_data_from_files(file_directory):
                     break
             if valid:
                 report_time = aircraft_record['PosTime'] / 1000
-                mode_s_hex = aircraft_record['Icao'].lower()
+                mode_s_hex = aircraft_record['Icao'].upper()
                 altitude = aircraft_record['Alt']
                 speed = aircraft_record['Spd']
                 squawk = aircraft_record['Sqk']

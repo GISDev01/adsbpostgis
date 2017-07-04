@@ -60,24 +60,33 @@ radio_receiver_2 = report_receiver.RadioReceiver(name='piaware2',
 def harvest_aircraft_json_from_pi():
     logger.info('Aircraft ingest beginning.')
     total_samples_count = 0
+    failure_num = 0
     while total_samples_count < total_samples_cutoff_val:
-        start_time = time.time()
+        try:
+            start_time = time.time()
 
-        current_reports_list = aircraft_report.get_aircraft_data_from_url(aircraft_data_url1)
-        if len(current_reports_list) > 0:
-            aircraft_report.load_aircraft_reports_list_into_db(
-                aircraft_reports_list=current_reports_list,
-                radio_receiver=radio_receiver_1,
-                dbconn=postgres_db_connection)
+            current_reports_list = aircraft_report.get_aircraft_data_from_url(aircraft_data_url1)
+            if len(current_reports_list) > 0:
+                aircraft_report.load_aircraft_reports_list_into_db(
+                    aircraft_reports_list=current_reports_list,
+                    radio_receiver=radio_receiver_1,
+                    dbconn=postgres_db_connection)
 
-        end_time = time.time()
-        logger.debug('{} seconds for data pull from Pi'.format((end_time - start_time)))
-        total_samples_count += 1
-        time.sleep(sleep_time_sec)
+            end_time = time.time()
+            logger.debug('{} seconds for data pull from Pi'.format((end_time - start_time)))
+            total_samples_count += 1
+            time.sleep(sleep_time_sec)
+        except:
+            # Workaround for failing connection when pi gets busy
+            time.sleep(120)
+            failure_num += 1
+            if failure_num > 10:
+                exit(1)
+
 
 
 if __name__ == '__main__':
     logger.debug('Entry from main.py main started')
-    # harvest_aircraft_json_from_pi()
-    directory_path = os.path.join('externaldata', 'adsbedata', 'rawdata', '2016-06-20')
-    aircraft_report.get_aircraft_data_from_files(directory_path)
+    harvest_aircraft_json_from_pi()
+    # directory_path = os.path.join('externaldata', 'adsbedata', 'rawdata', '2016-06-20')
+    # aircraft_report.get_aircraft_data_from_files(directory_path)
