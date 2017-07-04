@@ -8,9 +8,11 @@ import logging
 import os
 import time
 
+# TODO: Refactor the DB connection into a param, so there's not need to import main here
+import main
+
 import requests
 
-import main
 from utils import mathutils
 
 logger = logging.getLogger(__name__)
@@ -278,14 +280,15 @@ def get_aircraft_data_from_files(file_directory):
     files_to_process = []
     for file in os.listdir(file_directory):
         if file.endswith('.json'):
-            logger.debug('Found Aircraft data file: {}'.format(os.path.join(file_directory, file)))
+            logger.info('Found Aircraft data file: {}'.format(os.path.join(file_directory, file)))
             files_to_process.append(os.path.join(file_directory, file))
 
     for json_file in files_to_process:
-        logger.debug('Processing Aircraft JSON data file: {} '.format(json_file))
+        logger.info('Processing Aircraft JSON data file: {} '.format(json_file))
 
         file_report_list = []
-        file_data = json.load(json_file)
+
+        file_data = json.load(open(json_file, encoding='utf-8'))
         for aircraft_record in file_data['acList']:
             valid = True
             for json_key_name in vrs_adsb_file_keynames:
