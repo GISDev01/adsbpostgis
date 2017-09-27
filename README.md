@@ -9,6 +9,7 @@ Tested on Python 3.5 and 3.6 with Anaconda distro. (all requirements are in the 
 Windows 10 on Thinkpad T570 and MacOS Sierra on MBPt. Testing on Postgres 9.6 x64 with PostGIS 2.3.2.
 
 conda create -n adsbpostgis python=3.6
+On Mac: brew install postgis
 
 git clone https://github.com/GISDev01/adsbpostgis.git
 cd adsbpostgis

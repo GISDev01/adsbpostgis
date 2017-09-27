@@ -19,4 +19,5 @@ database:
     user: 'postgres'
     pwd: 'pwdhere'
 
-waittimesec: 1
+waittimesec: 5
+samplescutoff: 100000000
