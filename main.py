@@ -78,6 +78,7 @@ def harvest_aircraft_json_from_pi():
             time.sleep(sleep_time_sec)
         except:
             # Workaround for failing connection when pi gets busy
+            logger.exception('Issue getting data from a receiver {}'.format(radio_receiver_1))
             time.sleep(120)
             failure_num += 1
             if failure_num > 10:
