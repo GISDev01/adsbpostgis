@@ -17,7 +17,7 @@ database:
     port: '5432'
     dbname: 'adsb'
     user: 'postgres'
-    pwd: 'pwdhere'
+    pwd: ''
 
 waittimesec: 5
 samplescutoff: 100000000

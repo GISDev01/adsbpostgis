@@ -1,4 +1,4 @@
-CREATE DATABASE "SkyAlpha"
+CREATE DATABASE "adsb"
 WITH
 OWNER = postgres
 ENCODING = 'UTF8'
