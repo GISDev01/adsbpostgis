@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 current_date_stamp = '2017-10-01'
 
 # temporary config load while testing
-with open("config.yml", 'r') as yaml_config_file:
+with open(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'config.yml'), 'r') as yaml_config_file:
     local_config = yaml.load(yaml_config_file)
 
 adsbe_download_base_url = local_config['adsbe_url']
