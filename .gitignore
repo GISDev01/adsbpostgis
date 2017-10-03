@@ -4,6 +4,7 @@ config.yml
 /externaldata/faaopendata/MASTER_CLEANED.csv
 /externaldata/faaopendata/faadata_metadata.pdf
 /externaldata/adsbedata/rawdata
+/externaldata/adsbedata/output
 
 
 # Byte-compiled / optimized / DLL files

@@ -279,7 +279,7 @@ def get_aircraft_data_from_files(file_directory):
     Returns:
         A list of AircraftReports
     """
-    radio_receiver_vrs = report_receiver.RadioReceiver(name='adsbearchive',
+    radio_receiver_vrs = report_receiver.RadioReceiver(name='archive',
                                                        type='vrs',
                                                        lat83=0,
                                                        long83=0,
@@ -368,9 +368,9 @@ def get_aircraft_data_from_files(file_directory):
                                                     category=None)
                             file_report_list.append(record)
 
-            load_aircraft_reports_list_into_db(aircraft_reports_list=file_report_list,
-                                               radio_receiver=radio_receiver_vrs,
-                                               dbconn=main.postgres_db_connection)
+            # load_aircraft_reports_list_into_db(aircraft_reports_list=file_report_list,
+            #                                    radio_receiver=radio_receiver_vrs,
+            #                                    dbconn=main.postgres_db_connection)
 
 
 def load_aircraft_reports_list_into_db(aircraft_reports_list, radio_receiver, dbconn):

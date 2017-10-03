@@ -4,12 +4,14 @@ import logging
 import time
 import os
 import yaml
+import sys
 
 from model import aircraft_report
 from model import report_receiver
 from utils import postgres as pg_utils
 
-with open("config.yml", 'r') as yaml_config_file:
+
+with open(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'config.yml'), 'r') as yaml_config_file:
     config = yaml.load(yaml_config_file)
 
 # log_formatter = logging.Formatter("%(levelname)s: %(asctime)s - %(name)s - %(process)s - %(message)s")
