@@ -300,84 +300,85 @@ def get_aircraft_data_from_files(file_directory):
         file_report_list = []
         try:
             file_data = json.load(open(json_file, encoding='utf-8'))
-        except ValueError, e:
-            logger.error('Error parsing JSON data file: {}'.format(os.path.join(file_directory, file)))
+        except:
+            logger.error('Error parsing JSON data file: {}'.format(json_file))
             malformed_json_files.append(json_file)
+            pass
 
-        if 'acList' in aircraft_record.keys():
-            for aircraft_record in file_data['acList']:
-                valid = True
-                for json_key_name in vrs_adsb_file_keynames:
-                    if json_key_name not in aircraft_record:
-                        valid = False
-                        break
-                if valid:
-                    report_time = aircraft_record['PosTime'] / 1000
-                    mode_s_hex = aircraft_record['Icao'].upper()
-                    altitude = aircraft_record['Alt']
-                    speed = aircraft_record['Spd']
-                    squawk = aircraft_record['Sqk']
-                    if 'Call' in aircraft_record:
-                        flight = flight_format.format(aircraft_record['Call'])
-                    else:
-                        flight = ''
-                    track = aircraft_record['Trak']
-                    long83 = aircraft_record['Long']
-                    lat83 = aircraft_record['Lat']
+        for aircraft_record in file_data['acList']:
+            valid = True
+            for json_key_name in vrs_adsb_file_keynames:
+                if json_key_name not in aircraft_record:
+                    valid = False
+                    break
+            if valid:
+                report_time = aircraft_record['PosTime'] / 1000
+                mode_s_hex = aircraft_record['Icao'].upper()
+                altitude = aircraft_record['Alt']
+                speed = aircraft_record['Spd']
+                squawk = aircraft_record['Sqk']
+                if 'Call' in aircraft_record:
+                    flight = flight_format.format(aircraft_record['Call'])
+                else:
+                    flight = ''
+                track = aircraft_record['Trak']
+                long83 = aircraft_record['Long']
+                lat83 = aircraft_record['Lat']
 
-                    is_ground = aircraft_record['Gnd']
-                    messages = aircraft_record['CMsgs']
-                    mlat = aircraft_record['Mlat']
-                    tt = aircraft_record['TT']
+                is_ground = aircraft_record['Gnd']
+                messages = aircraft_record['CMsgs']
+                mlat = aircraft_record['Mlat']
+                tt = aircraft_record['TT']
 
-                    if 'Vsi' in aircraft_record:
-                        vert_rate = aircraft_record['Vsi']
-                    else:
-                        vert_rate = 0.0
-                    is_metric = False
+                if 'Vsi' in aircraft_record:
+                    vert_rate = aircraft_record['Vsi']
+                else:
+                    vert_rate = 0.0
+                is_metric = False
 
-                    # Calculate each position in the past track data and insert as an Aircraft record
-                    past_track = aircraft_record['Cos']
-                    if tt == 'a' or tt == 's':
-                        numpos = len(past_track) / 4
-                        for i in range(int(numpos)):
-                            if past_track[(i * 4) + 3]:
-                                if tt == 'a':
-                                    altitude = past_track[(i * 4) + 3]
-                                elif tt == 's':
-                                    speed = past_track[(i * 4) + 3]
-                                lat83 = past_track[(i * 4) + 0]
-                                long83 = past_track[(i * 4) + 1]
-                                if lat83 < -90.0 or lat83 > 90.0 or long83 < -180.0 or long83 > 180.0:
-                                    continue
-                                report_time = past_track[(i * 4) + 2] / 1000
-                                seen = seen_pos = 0
-                                record = AircraftReport(hex=mode_s_hex,
-                                                        time=report_time,
-                                                        speed=speed,
-                                                        squawk=squawk,
-                                                        flight=flight,
-                                                        altitude=altitude,
-                                                        isMetric=is_metric,
-                                                        track=track,
-                                                        lon=long83,
-                                                        lat=lat83,
-                                                        vert_rate=vert_rate,
-                                                        seen=seen,
-                                                        validposition=1,
-                                                        validtrack=1,
-                                                        reporter="",
-                                                        mlat=mlat,
-                                                        is_ground=is_ground,
-                                                        report_location=None,
-                                                        messages=messages,
-                                                        seen_pos=seen_pos,
-                                                        category=None)
-                                file_report_list.append(record)
+                # Calculate each position in the past track data and insert as an Aircraft record
+                past_track = aircraft_record['Cos']
+                if tt == 'a' or tt == 's':
+                    numpos = len(past_track) / 4
+                    for i in range(int(numpos)):
+                        if past_track[(i * 4) + 3]:
+                            if tt == 'a':
+                                altitude = past_track[(i * 4) + 3]
+                            elif tt == 's':
+                                speed = past_track[(i * 4) + 3]
+                            lat83 = past_track[(i * 4) + 0]
+                            long83 = past_track[(i * 4) + 1]
+                            if lat83 < -90.0 or lat83 > 90.0 or long83 < -180.0 or long83 > 180.0:
+                                continue
+                            report_time = past_track[(i * 4) + 2] / 1000
+                            seen = seen_pos = 0
+                            record = AircraftReport(hex=mode_s_hex,
+                                                    time=report_time,
+                                                    speed=speed,
+                                                    squawk=squawk,
+                                                    flight=flight,
+                                                    altitude=altitude,
+                                                    isMetric=is_metric,
+                                                    track=track,
+                                                    lon=long83,
+                                                    lat=lat83,
+                                                    vert_rate=vert_rate,
+                                                    seen=seen,
+                                                    validposition=1,
+                                                    validtrack=1,
+                                                    reporter="",
+                                                    mlat=mlat,
+                                                    is_ground=is_ground,
+                                                    report_location=None,
+                                                    messages=messages,
+                                                    seen_pos=seen_pos,
+                                                    category=None)
+                            file_report_list.append(record)
 
-            # load_aircraft_reports_list_into_db(aircraft_reports_list=file_report_list,
-            #                                    radio_receiver=radio_receiver_vrs,
-            #                                    dbconn=main.postgres_db_connection)
+                            # load_aircraft_reports_list_into_db(aircraft_reports_list=file_report_list,
+                            #                                    radio_receiver=radio_receiver_vrs,
+                            #                                    dbconn=main.postgres_db_connection)
+
     logger.info('Malformed JSON Files found: {}'.format(malformed_json_files))
 
 
