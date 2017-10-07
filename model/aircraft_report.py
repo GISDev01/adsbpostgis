@@ -375,9 +375,9 @@ def get_aircraft_data_from_files(file_directory):
                                                     category=None)
                             file_report_list.append(record)
 
-                            # load_aircraft_reports_list_into_db(aircraft_reports_list=file_report_list,
-                            #                                    radio_receiver=radio_receiver_vrs,
-                            #                                    dbconn=main.postgres_db_connection)
+                            load_aircraft_reports_list_into_db(aircraft_reports_list=file_report_list,
+                                                               radio_receiver=radio_receiver_vrs,
+                                                               dbconn=main.postgres_db_connection)
 
     logger.info('Malformed JSON Files found: {}'.format(malformed_json_files))
 
