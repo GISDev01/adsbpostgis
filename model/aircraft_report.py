@@ -295,15 +295,17 @@ def get_aircraft_data_from_files(file_directory):
             files_to_process.append(os.path.join(file_directory, file))
 
     for json_file in files_to_process:
-        logger.info('Processing Aircraft JSON data file: {} '.format(json_file))
+        # logger.info('Processing Aircraft JSON data file: {} '.format(json_file))
 
         file_report_list = []
         try:
             file_data = json.load(open(json_file, encoding='utf-8'))
+            logger.info('Success parsing JSON data file: {}'.format(json_file))
+
         except:
             logger.error('Error parsing JSON data file: {}'.format(json_file))
             malformed_json_files.append(json_file)
-            pass
+            continue
 
         for aircraft_record in file_data['acList']:
             valid = True
@@ -312,6 +314,7 @@ def get_aircraft_data_from_files(file_directory):
                     valid = False
                     break
             if valid:
+                logger.info('Valid record')
                 report_time = aircraft_record['PosTime'] / 1000
                 mode_s_hex = aircraft_record['Icao'].upper()
                 altitude = aircraft_record['Alt']
@@ -373,16 +376,20 @@ def get_aircraft_data_from_files(file_directory):
                                                     messages=messages,
                                                     seen_pos=seen_pos,
                                                     category=None)
+                            logger.info('New report generated from archive JSON record: {}'.format(record))
                             file_report_list.append(record)
 
-                            load_aircraft_reports_list_into_db(aircraft_reports_list=file_report_list,
-                                                               radio_receiver=radio_receiver_vrs,
-                                                               dbconn=main.postgres_db_connection)
+        # Load all of the aircraft reports from this JSON file into the DB before moving on to the next file
+        load_aircraft_reports_list_into_db(aircraft_reports_list=file_report_list,
+                                           radio_receiver=radio_receiver_vrs,
+                                           dbconn=main.postgres_db_connection)
 
-    logger.info('Malformed JSON Files found: {}'.format(malformed_json_files))
+    logger.info('{} Malformed JSON Files found: {}'.format(len(malformed_json_files), malformed_json_files))
 
 
 def load_aircraft_reports_list_into_db(aircraft_reports_list, radio_receiver, dbconn):
+    logger.debug('Loading List of {} Reports into DB.'.format(len(aircraft_reports_list)))
+
     current_timestamp = int(time.time())
     for aircraft in aircraft_reports_list:
         if aircraft.validposition and aircraft.validtrack:
@@ -393,7 +400,7 @@ def load_aircraft_reports_list_into_db(aircraft_reports_list, radio_receiver, db
             else:
                 logger.warning('No DB Connection. Aircraft not inserted; {}'.format(aircraft))
         else:
-            logger.error("Dropped report " + aircraft.to_JSON())
+            logger.error("Dropped report: {}".format(aircraft.to_JSON()))
     if dbconn:
         dbconn.commit()
 
