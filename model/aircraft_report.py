@@ -312,7 +312,8 @@ def get_aircraft_data_from_files(file_directory):
             # temp workaround to fix malformed JSON in archive files - replace common string issue in place
             in_file = open(json_file).read()
             out_file = open(json_file, 'w')
-            find_replace_dict = {',,{': '{'}
+            # combos of strings in k,v pairs to find and replace, eg. 'findthis', 'replacewiththis'
+            find_replace_dict = {',,{': '{', ']}\n': ']},\n'}
 
             for find_replace_combo in find_replace_dict.keys():
                 in_file = in_file.replace(find_replace_combo, find_replace_dict[find_replace_combo])
