@@ -305,18 +305,30 @@ def get_aircraft_data_from_files(file_directory):
 
         file_report_list = []
         try:
-            # temp workaround to fix malformed JSON in archive files
-            with fileinput.FileInput(json_file, inplace=True, backup='.backup') as temp_file:
-                for line in temp_file:
-                    print(line.replace(',,{', '{'))
-
             file_data = json.load(open(json_file, encoding='utf-8'))
             logger.info('Success parsing JSON data file: {}'.format(json_file))
 
         except:
-            logger.error('Error parsing JSON data file: {}'.format(json_file))
-            malformed_json_files.append(json_file)
-            continue
+            # temp workaround to fix malformed JSON in archive files - replace common string issue in place
+            in_file = open(json_file).read()
+            out_file = open(json_file, 'w')
+            find_replace_dict = {',,{': '{'}
+
+            for find_replace_combo in find_replace_dict.keys():
+                in_file = in_file.replace(find_replace_combo, find_replace_dict[find_replace_combo])
+            out_file.write(in_file)
+            out_file.close()
+
+            try:
+                file_data = json.load(open(json_file, encoding='utf-8'))
+                logger.info('Success parsing Fixed JSON data file: {}'.format(json_file))
+
+            except Exception as err:
+                # First pass of fixing the common JSON issue didn't work
+                logger.error(err)
+                logger.error('Error parsing Fixed JSON data file: {}'.format(json_file))
+                malformed_json_files.append(json_file)
+                continue
 
         for aircraft_record in file_data['acList']:
             valid = True
@@ -354,17 +366,17 @@ def get_aircraft_data_from_files(file_directory):
                 past_track = aircraft_record['Cos']
                 if tt == 'a' or tt == 's':
                     numpos = len(past_track) / 4
-                    for i in range(int(numpos)):
-                        if past_track[(i * 4) + 3]:
+                    for find_replace_combo in range(int(numpos)):
+                        if past_track[(find_replace_combo * 4) + 3]:
                             if tt == 'a':
-                                altitude = past_track[(i * 4) + 3]
+                                altitude = past_track[(find_replace_combo * 4) + 3]
                             elif tt == 's':
-                                speed = past_track[(i * 4) + 3]
-                            lat83 = past_track[(i * 4) + 0]
-                            long83 = past_track[(i * 4) + 1]
+                                speed = past_track[(find_replace_combo * 4) + 3]
+                            lat83 = past_track[(find_replace_combo * 4) + 0]
+                            long83 = past_track[(find_replace_combo * 4) + 1]
                             if lat83 < -90.0 or lat83 > 90.0 or long83 < -180.0 or long83 > 180.0:
                                 continue
-                            report_time = past_track[(i * 4) + 2] / 1000
+                            report_time = past_track[(find_replace_combo * 4) + 2] / 1000
                             seen = seen_pos = 0
                             record = AircraftReport(hex=mode_s_hex,
                                                     time=report_time,
