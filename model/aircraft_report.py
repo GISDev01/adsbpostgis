@@ -13,6 +13,8 @@ import main
 
 import requests
 
+import fileinput
+
 from utils import mathutils
 
 from model import report_receiver
@@ -160,14 +162,17 @@ class AircraftReport(object):
         Send this JSON record into the DB in an open connection
         
         :param database_connection: Open database connection
-        :param update: bool to indicate an update or insert (TODO: use upsert)
+        :param update: bool to indicate an update or insert
         :return: None
         """
 
         # Need to extract datetime fields from time
         # Need to encode lat/lon appropriately for PostGIS storage (spatially indexed)
         cur = database_connection.cursor()
+
         coordinates = "POINT(%s %s)" % (self.lon, self.lat)
+
+        # TODO: Use upsert instead of update vs. insert logic here
         if update:
             params = [self.mode_s_hex, self.squawk, self.flight, self.is_metric,
                       self.mlat, self.altitude, self.speed, self.vert_rate,
@@ -176,6 +181,7 @@ class AircraftReport(object):
                       self.rssi, self.nucp, self.is_ground,
                       self.mode_s_hex, self.squawk, flight_format.format(self.flight),
                       reporter_format.format(self.reporter), self.time, self.messages, self.is_anon]
+
             # TODO: Refactor with proper ORM to avoid SQLi vulns
             sql = '''UPDATE aircraftreports SET (mode_s_hex, squawk, flight, is_metric, is_mlat, altitude, speed, vert_rate, bearing, report_location, latitude83, longitude83, messages_sent, report_epoch, reporter, rssi, nucp, is_ground, is_anon)
         VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, ST_PointFromText(%s, 4326), %s, %s, %s, %s, %s, %s, %s, %s, %s)
@@ -299,6 +305,11 @@ def get_aircraft_data_from_files(file_directory):
 
         file_report_list = []
         try:
+            # temp workaround to fix malformed JSON in archive files
+            with fileinput.FileInput(json_file, inplace=True, backup='.backup') as temp_file:
+                for line in temp_file:
+                    print(line.replace(',,{', '{'))
+
             file_data = json.load(open(json_file, encoding='utf-8'))
             logger.info('Success parsing JSON data file: {}'.format(json_file))
 
