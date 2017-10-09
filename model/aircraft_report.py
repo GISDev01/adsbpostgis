@@ -303,31 +303,40 @@ def get_aircraft_data_from_files(file_directory):
     for json_file in files_to_process:
         # logger.info('Processing Aircraft JSON data file: {} '.format(json_file))
 
-        file_report_list = []
+        aircraft_report_list = []
         try:
             file_data = json.load(open(json_file, encoding='utf-8'))
-            logger.info('Success parsing JSON data file: {}'.format(json_file))
+            logger.debug('Success parsing JSON data file: {}'.format(json_file))
 
         except:
-            # temp workaround to fix malformed JSON in archive files - replace common string issue in place
+            # temp workaround to fix malformed JSON in archive files - replace common strin
+            # issues in-place before parsing
+
             in_file = open(json_file).read()
             out_file = open(json_file, 'w')
+
             # combos of strings in k,v pairs to find and replace, eg. 'findthis', 'replacewiththis'
-            find_replace_dict = {',,{': '{', ']}\n': ']},\n'}
+            # Fix lines that start with ,, and ,
+            # Fix lines that don't end with a ,
+
+            find_replace_dict = {',,{': '{',
+                                 ',{': '{',
+                                 '}\n{': '},\n{',
+                                 ',],"totalAc"': '],"totalAc"'}
 
             for find_replace_combo in find_replace_dict.keys():
                 in_file = in_file.replace(find_replace_combo, find_replace_dict[find_replace_combo])
             out_file.write(in_file)
             out_file.close()
 
+            # Now that the JSON file is cleaned up, let's try this again
             try:
                 file_data = json.load(open(json_file, encoding='utf-8'))
-                logger.info('Success parsing Fixed JSON data file: {}'.format(json_file))
+                logger.info('Success parsing fixed JSON data file: {}'.format(json_file))
 
             except Exception as err:
                 # First pass of fixing the common JSON issue didn't work
-                logger.error(err)
-                logger.error('Error parsing Fixed JSON data file: {}'.format(json_file))
+                logger.error('Error parsing Fixed JSON data : {} \n Error file: {}'.format(err, json_file))
                 malformed_json_files.append(json_file)
                 continue
 
@@ -401,10 +410,10 @@ def get_aircraft_data_from_files(file_directory):
                                                     seen_pos=seen_pos,
                                                     category=None)
                             logger.info('New report generated from archive JSON record: {}'.format(record))
-                            file_report_list.append(record)
+                            aircraft_report_list.append(record)
 
         # Load all of the aircraft reports from this JSON file into the DB before moving on to the next file
-        load_aircraft_reports_list_into_db(aircraft_reports_list=file_report_list,
+        load_aircraft_reports_list_into_db(aircraft_reports_list=aircraft_report_list,
                                            radio_receiver=radio_receiver_vrs,
                                            dbconn=main.postgres_db_connection)
 
