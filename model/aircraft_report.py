@@ -409,7 +409,7 @@ def get_aircraft_data_from_files(file_directory):
                                                     messages=messages,
                                                     seen_pos=seen_pos,
                                                     category=None)
-                            logger.info('New report generated from archive JSON record: {}'.format(record))
+                            logger.debug('New report generated from archive JSON record: {}'.format(record))
                             aircraft_report_list.append(record)
 
         # Load all of the aircraft reports from this JSON file into the DB before moving on to the next file
@@ -422,19 +422,26 @@ def get_aircraft_data_from_files(file_directory):
 
 
 def load_aircraft_reports_list_into_db(aircraft_reports_list, radio_receiver, dbconn):
-    logger.debug('Loading List of {} Reports into DB.'.format(len(aircraft_reports_list)))
+    num_reports = len(aircraft_reports_list)
+    logger.info('Loading list of {} reports into DB.'.format(num_reports))
 
+    reports_loaded = 0
     current_timestamp = int(time.time())
+
     for aircraft in aircraft_reports_list:
+        reports_loaded += 1
+        logger.debug('Progress loading aircrafts reports list into DB: {}/{}'.format(reports_loaded, num_reports))
+
         if aircraft.validposition and aircraft.validtrack:
             aircraft.time = current_timestamp - aircraft.seen
             aircraft.reporter = radio_receiver.name
             if dbconn:
                 aircraft.send_aircraft_to_db(dbconn)
+                logger.debug('Sending to DB')
             else:
-                logger.warning('No DB Connection. Aircraft not inserted; {}'.format(aircraft))
+                logger.error('No DB Connection. Aircraft not inserted; {}'.format(aircraft))
         else:
-            logger.error("Dropped report: {}".format(aircraft.to_JSON()))
+            logger.error("Dropped report - no valid position or no validtrack found: {}".format(aircraft.to_JSON()))
     if dbconn:
         dbconn.commit()
 
