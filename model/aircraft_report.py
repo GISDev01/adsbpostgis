@@ -20,6 +20,7 @@ from utils import mathutils
 from model import report_receiver
 
 logger = logging.getLogger(__name__)
+logger.setLevel('INFO')
 
 knots_to_kmh = 1.852
 ft_to_meters = 0.3048
@@ -172,7 +173,6 @@ class AircraftReport(object):
 
         coordinates = "POINT(%s %s)" % (self.lon, self.lat)
 
-        # TODO: Use upsert instead of update vs. insert logic here
         if update:
             params = [self.mode_s_hex, self.squawk, self.flight, self.is_metric,
                       self.mlat, self.altitude, self.speed, self.vert_rate,
@@ -182,7 +182,6 @@ class AircraftReport(object):
                       self.mode_s_hex, self.squawk, flight_format.format(self.flight),
                       reporter_format.format(self.reporter), self.time, self.messages, self.is_anon]
 
-            # TODO: Refactor with proper ORM to avoid SQLi vulns
             sql = '''UPDATE aircraftreports SET (mode_s_hex, squawk, flight, is_metric, is_mlat, altitude, speed, vert_rate, bearing, report_location, latitude83, longitude83, messages_sent, report_epoch, reporter, rssi, nucp, is_ground, is_anon)
         VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, ST_PointFromText(%s, 4326), %s, %s, %s, %s, %s, %s, %s, %s, %s)
             WHERE mode_s_hex like %s and squawk like %s and flight like %s and reporter like %s
@@ -195,7 +194,8 @@ class AircraftReport(object):
                       self.messages, self.time, self.reporter,
                       self.rssi, self.nucp, self.is_ground, self.is_anon]
             sql = '''INSERT into aircraftreports (mode_s_hex, squawk, flight, is_metric, is_mlat, altitude, speed, vert_rate, bearing, report_location, latitude83, longitude83, messages_sent, report_epoch, reporter, rssi, nucp, is_ground, is_anon)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, ST_PointFromText(%s, 4326), %s, %s, %s, %s, %s, %s, %s, %s, %s);'''
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, ST_PointFromText(%s, 4326), %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    ON CONFLICT DO NOTHING;'''
 
         logger.debug(cur.mogrify(sql, params))
         cur.execute(sql, params)
@@ -347,7 +347,6 @@ def get_aircraft_data_from_files(file_directory):
                     valid = False
                     break
             if valid:
-                logger.info('Valid record')
                 report_time = aircraft_record['PosTime'] / 1000
                 mode_s_hex = aircraft_record['Icao'].upper()
                 altitude = aircraft_record['Alt']
