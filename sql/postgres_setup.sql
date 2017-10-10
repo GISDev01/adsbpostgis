@@ -29,7 +29,8 @@ CREATE TABLE aircraftreports (
   rssi            DOUBLE PRECISION,
   nucp            INTEGER,
   is_ground       BOOLEAN,
-  is_anon         BOOLEAN
+  is_anon         BOOLEAN,
+  UNIQUE          (mode_s_hex, report_epoch)
 );
 
 
@@ -134,7 +135,6 @@ CREATE INDEX pr_epoch
 
 CREATE INDEX rep_loc
   ON aircraftreports USING GIST (report_location);
-
 
 GRANT ALL ON TABLE aircraftreports TO postgres;
 -- GRANT SELECT, INSERT, DELETE, UPDATE ON TABLE aircraftreports TO aircraftreportadmin;
