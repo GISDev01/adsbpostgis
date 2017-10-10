@@ -1,8 +1,8 @@
-CREATE DATABASE "adsb"
-WITH
-OWNER = postgres
-ENCODING = 'UTF8'
-CONNECTION LIMIT = -1;
+-- CREATE DATABASE "adsb"
+-- WITH
+-- OWNER = postgres
+-- ENCODING = 'UTF8'
+-- CONNECTION LIMIT = -1;
 
 CREATE EXTENSION IF NOT EXISTS postgis WITH SCHEMA public;
 
@@ -29,8 +29,8 @@ CREATE TABLE aircraftreports (
   rssi            DOUBLE PRECISION,
   nucp            INTEGER,
   is_ground       BOOLEAN,
-  is_anon         BOOLEAN,
-  UNIQUE          (mode_s_hex, report_epoch)
+  is_anon         BOOLEAN
+  --UNIQUE          (mode_s_hex, report_epoch)
 );
 
 
@@ -137,4 +137,4 @@ CREATE INDEX rep_loc
   ON aircraftreports USING GIST (report_location);
 
 GRANT ALL ON TABLE aircraftreports TO postgres;
--- GRANT SELECT, INSERT, DELETE, UPDATE ON TABLE aircraftreports TO aircraftreportadmin;
+-- GRANT SELECT, INSERT, DELETE, UPDATE ON TABLE aircraftreports TO postgres;

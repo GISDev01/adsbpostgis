@@ -345,6 +345,7 @@ def get_aircraft_data_from_files(file_directory):
             for json_key_name in vrs_adsb_file_keynames:
                 if json_key_name not in aircraft_record:
                     valid = False
+                    logger.error('Error with aircraft in acList. Missing expected json key: {}'.format(json_key_name))
                     break
             if valid:
                 report_time = aircraft_record['PosTime'] / 1000
@@ -375,17 +376,17 @@ def get_aircraft_data_from_files(file_directory):
                 past_track = aircraft_record['Cos']
                 if tt == 'a' or tt == 's':
                     numpos = len(past_track) / 4
-                    for find_replace_combo in range(int(numpos)):
-                        if past_track[(find_replace_combo * 4) + 3]:
+                    for past_track_reading in range(int(numpos)):
+                        if past_track[(past_track_reading * 4) + 3]:
                             if tt == 'a':
-                                altitude = past_track[(find_replace_combo * 4) + 3]
+                                altitude = past_track[(past_track_reading * 4) + 3]
                             elif tt == 's':
-                                speed = past_track[(find_replace_combo * 4) + 3]
-                            lat83 = past_track[(find_replace_combo * 4) + 0]
-                            long83 = past_track[(find_replace_combo * 4) + 1]
+                                speed = past_track[(past_track_reading * 4) + 3]
+                            lat83 = past_track[(past_track_reading * 4) + 0]
+                            long83 = past_track[(past_track_reading * 4) + 1]
                             if lat83 < -90.0 or lat83 > 90.0 or long83 < -180.0 or long83 > 180.0:
                                 continue
-                            report_time = past_track[(find_replace_combo * 4) + 2] / 1000
+                            report_time = past_track[(past_track_reading * 4) + 2] / 1000
                             seen = seen_pos = 0
                             record = AircraftReport(hex=mode_s_hex,
                                                     time=report_time,
@@ -408,7 +409,7 @@ def get_aircraft_data_from_files(file_directory):
                                                     messages=messages,
                                                     seen_pos=seen_pos,
                                                     category=None)
-                            logger.debug('New report generated from archive JSON record: {}'.format(record))
+                            logger.debug('New report generated from track-based archive JSON record: {}'.format(record))
                             aircraft_report_list.append(record)
 
         # Load all of the aircraft reports from this JSON file into the DB before moving on to the next file
@@ -429,7 +430,8 @@ def load_aircraft_reports_list_into_db(aircraft_reports_list, radio_receiver, db
 
     for aircraft in aircraft_reports_list:
         reports_loaded += 1
-        logger.debug('Progress loading aircrafts reports list into DB: {}/{}'.format(reports_loaded, num_reports))
+        if not reports_loaded % 10000:
+            logger.info('Progress loading aircrafts reports list into DB: {}/{}'.format(reports_loaded, num_reports))
 
         if aircraft.validposition and aircraft.validtrack:
             aircraft.time = current_timestamp - aircraft.seen
@@ -441,6 +443,9 @@ def load_aircraft_reports_list_into_db(aircraft_reports_list, radio_receiver, db
                 logger.error('No DB Connection. Aircraft not inserted; {}'.format(aircraft))
         else:
             logger.error("Dropped report - no valid position or no validtrack found: {}".format(aircraft.to_JSON()))
+        if reports_loaded > 50000:
+            break
+
     if dbconn:
         dbconn.commit()
 
