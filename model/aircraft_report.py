@@ -443,8 +443,7 @@ def load_aircraft_reports_list_into_db(aircraft_reports_list, radio_receiver, db
                 logger.error('No DB Connection. Aircraft not inserted; {}'.format(aircraft))
         else:
             logger.error("Dropped report - no valid position or no validtrack found: {}".format(aircraft.to_JSON()))
-        if reports_loaded > 50000:
-            break
+
 
     if dbconn:
         dbconn.commit()
