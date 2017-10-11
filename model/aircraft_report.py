@@ -193,7 +193,7 @@ class AircraftReport(object):
                       self.track, coordinates, self.lat, self.lon,
                       self.messages, self.time, self.reporter,
                       self.rssi, self.nucp, self.is_ground, self.is_anon]
-            sql = '''INSERT into aircraftreports (mode_s_hex, squawk, flight, is_metric, is_mlat, altitude, speed, vert_rate, bearing, report_location, latitude83, longitude83, messages_sent, report_epoch, reporter, rssi, nucp, is_ground, is_anon)
+            sql = '''INSERT into aircraftreports50k (mode_s_hex, squawk, flight, is_metric, is_mlat, altitude, speed, vert_rate, bearing, report_location, latitude83, longitude83, messages_sent, report_epoch, reporter, rssi, nucp, is_ground, is_anon)
                     VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, ST_PointFromText(%s, 4326), %s, %s, %s, %s, %s, %s, %s, %s, %s)
                     ON CONFLICT DO NOTHING;'''
 
@@ -373,7 +373,21 @@ def get_aircraft_data_from_files(file_directory):
                 is_metric = False
 
                 # Calculate each position in the past track data and insert as an Aircraft record
+                # Cos example
+
                 past_track = aircraft_record['Cos']
+                # a means each position in the track includes the altitude
+                # lat, long, epoch ms, altitude
+                # Example record snippet: "TT": "a", "Trt": 2,
+                #  "Cos": [36.547302, -81.144791, 1506817898412.0, 24000.0,
+                #           36.565704, -81.144619, 1506817909334.0, 24000.0,
+                #           36.582092, -81.144505, 1506817919022.0, 24000.0,
+                #           36.627914, -81.143875, 1506817941600.0, 24000.0,
+                #           36.639679, -81.143417, 1506817947131.0, 24000.0,
+                #           36.65451, -81.141872, 1506817951647.0, 24000.0,
+                #           36.654487, -81.141922, 1506817951647.0, 24000.0]}
+
+                # s means each position in the track includes the speed
                 if tt == 'a' or tt == 's':
                     numpos = len(past_track) / 4
                     for past_track_reading in range(int(numpos)):
@@ -386,6 +400,7 @@ def get_aircraft_data_from_files(file_directory):
                             long83 = past_track[(past_track_reading * 4) + 1]
                             if lat83 < -90.0 or lat83 > 90.0 or long83 < -180.0 or long83 > 180.0:
                                 continue
+                            # converting millis to seconds
                             report_time = past_track[(past_track_reading * 4) + 2] / 1000
                             seen = seen_pos = 0
                             record = AircraftReport(hex=mode_s_hex,
