@@ -188,7 +188,7 @@ class AircraftReport(object):
             and report_epoch = %s and messages_sent = %s'''
 
         else:
-            logger.info('Inserting: {}'.format(self))
+            logger.debug('Inserting Aircraft record: {}'.format(self))
             params = [self.mode_s_hex, self.squawk, self.flight, self.is_metric,
                       self.mlat, self.altitude, self.speed, self.vert_rate,
                       self.track, coordinates, self.lat, self.lon,
@@ -371,7 +371,7 @@ def get_aircraft_data_from_files(file_directory):
                 is_metric = False
 
                 # Calculate each position in the past track data and insert as an Aircraft record
-                # Cos example
+                # Process is a little convoluted due to the weird JSON schema used in the data with 'short tracks'
 
                 past_track = aircraft_record['Cos']
                 # a means each position in the track includes the altitude
@@ -380,10 +380,6 @@ def get_aircraft_data_from_files(file_directory):
                 #  "Cos": [36.547302, -81.144791, 1506817898412.0, 24000.0,
                 #           36.565704, -81.144619, 1506817909334.0, 24000.0,
                 #           36.582092, -81.144505, 1506817919022.0, 24000.0,
-                #           36.627914, -81.143875, 1506817941600.0, 24000.0,
-                #           36.639679, -81.143417, 1506817947131.0, 24000.0,
-                #           36.65451, -81.141872, 1506817951647.0, 24000.0,
-                #           36.654487, -81.141922, 1506817951647.0, 24000.0]}
 
                 # s means each position in the track includes the speed
                 if tt == 'a' or tt == 's':
@@ -427,9 +423,12 @@ def get_aircraft_data_from_files(file_directory):
                                                     seen_pos=seen_pos,
                                                     category=None)
 
-                            logger.info('New aircraft report generated from within a track within an '
+                            logger.debug('New aircraft report generated from within a track within an '
                                         'acList within an archive JSON record: {}'.format(record))
                             aircraft_report_list.append(record)
+
+                else:
+                    logger.info('TT not a or s: {} '.format(aircraft_record))
 
         # Load all of the aircraft reports from this JSON file into the DB before moving on to the next file
         load_aircraft_reports_list_into_db(aircraft_reports_list=aircraft_report_list,
@@ -526,8 +525,6 @@ def ingest_vrs_format_record(vrs_aircraft_report, report_pulled_timestamp):
 def ingest_dump1090_report_list(dumpfmt_aircraft_report_list):
     dump1090_ingested_reports_list = []
     for dumpfmt_aircraft_report in dumpfmt_aircraft_report_list:
-        logger.debug('Ingest Dump1090 Format')
-
         valid = True
         for key_name in dump1090_minimum_keynames:
             if key_name not in dumpfmt_aircraft_report:
