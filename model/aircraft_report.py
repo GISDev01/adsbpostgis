@@ -188,6 +188,7 @@ class AircraftReport(object):
             and report_epoch = %s and messages_sent = %s'''
 
         else:
+            logger.info('Inserting: {}'.format(self))
             params = [self.mode_s_hex, self.squawk, self.flight, self.is_metric,
                       self.mlat, self.altitude, self.speed, self.vert_rate,
                       self.track, coordinates, self.lat, self.lon,
@@ -426,7 +427,8 @@ def get_aircraft_data_from_files(file_directory):
                                                     seen_pos=seen_pos,
                                                     category=None)
 
-                            logger.info('New report generated from track-based archive JSON record: {}'.format(record))
+                            logger.info('New aircraft report generated from within a track within an '
+                                        'acList within an archive JSON record: {}'.format(record))
                             aircraft_report_list.append(record)
 
         # Load all of the aircraft reports from this JSON file into the DB before moving on to the next file
@@ -443,19 +445,16 @@ def load_aircraft_reports_list_into_db(aircraft_reports_list, radio_receiver, db
     logger.info('Loading list of {} reports into DB.'.format(num_reports))
 
     reports_loaded = 0
-    current_timestamp = int(time.time())
 
     for aircraft in aircraft_reports_list:
         reports_loaded += 1
-        if not reports_loaded % 10000:
-            logger.info('Progress loading aircrafts reports list into DB: {}/{}'.format(reports_loaded, num_reports))
+        if not reports_loaded % 5000:
+            logger.info('Progress loading aircraft reports list into DB: {}/{}'.format(reports_loaded, num_reports))
 
         if aircraft.validposition and aircraft.validtrack:
-            aircraft.time = current_timestamp - aircraft.seen
             aircraft.reporter = radio_receiver.name
             if dbconn:
                 aircraft.send_aircraft_to_db(dbconn)
-                logger.debug('Sending to DB')
             else:
                 logger.error('No DB Connection. Aircraft not inserted; {}'.format(aircraft))
         else:
