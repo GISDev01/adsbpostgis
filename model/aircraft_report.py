@@ -193,7 +193,7 @@ class AircraftReport(object):
                       self.track, coordinates, self.lat, self.lon,
                       self.messages, self.time, self.reporter,
                       self.rssi, self.nucp, self.is_ground, self.is_anon]
-            sql = '''INSERT into aircraftreports50k (mode_s_hex, squawk, flight, is_metric, is_mlat, altitude, speed, vert_rate, bearing, report_location, latitude83, longitude83, messages_sent, report_epoch, reporter, rssi, nucp, is_ground, is_anon)
+            sql = '''INSERT into aircraftreports (mode_s_hex, squawk, flight, is_metric, is_mlat, altitude, speed, vert_rate, bearing, report_location, latitude83, longitude83, messages_sent, report_epoch, reporter, rssi, nucp, is_ground, is_anon)
                     VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, ST_PointFromText(%s, 4326), %s, %s, %s, %s, %s, %s, %s, %s, %s)
                     ON CONFLICT DO NOTHING;'''
 
@@ -277,8 +277,6 @@ def get_aircraft_data_from_url(url_string, url_params=None):
 def get_aircraft_data_from_files(file_directory):
     """
     Sample record:
-    {"acList":[
-{"Id":10981358,"Rcvr":1,"HasSig":true,"Sig":31,"Icao":"A78FEE","Bad":false,"FSeen":"\/Date(1492992031138)\/","CMsgs":1,"AltT":0,"Tisb":false,"TrkH":false,"Sqk":"1200","Help":false,"VsiT":0,"WTC":0,"Species":0,"EngType":0,"EngMount":0,"Mil":false,"Cou":"United States","HasPic":false,"Interested":false,"FlightsCount":0,"Gnd":true,"SpdTyp":0,"CallSus":false,"TT":"a","Trt":1}, ... ]}
     Args:
         file_directory: A string containing a filepath
 
@@ -301,8 +299,6 @@ def get_aircraft_data_from_files(file_directory):
             files_to_process.append(os.path.join(file_directory, file))
 
     for json_file in files_to_process:
-        # logger.info('Processing Aircraft JSON data file: {} '.format(json_file))
-
         aircraft_report_list = []
         try:
             file_data = json.load(open(json_file, encoding='utf-8'))
@@ -316,9 +312,6 @@ def get_aircraft_data_from_files(file_directory):
             out_file = open(json_file, 'w')
 
             # combos of strings in k,v pairs to find and replace, eg. 'findthis', 'replacewiththis'
-            # Fix lines that start with ,, and ,
-            # Fix lines that don't end with a ,
-
             find_replace_dict = {',,{': '{',
                                  ',{': '{',
                                  '}\n{': '},\n{',
@@ -326,6 +319,7 @@ def get_aircraft_data_from_files(file_directory):
 
             for find_replace_combo in find_replace_dict.keys():
                 in_file = in_file.replace(find_replace_combo, find_replace_dict[find_replace_combo])
+
             out_file.write(in_file)
             out_file.close()
 
@@ -335,18 +329,21 @@ def get_aircraft_data_from_files(file_directory):
                 logger.info('Success parsing fixed JSON data file: {}'.format(json_file))
 
             except Exception as err:
-                # First pass of fixing the common JSON issue didn't work
+                # First pass of fixing the common JSON issue didn't work, so we're skipping this file for now
                 logger.error('Error parsing Fixed JSON data : {} \n Error file: {}'.format(err, json_file))
                 malformed_json_files.append(json_file)
                 continue
 
         for aircraft_record in file_data['acList']:
+            logger.debug('Aircraft Record in acList: {}'.format(aircraft_record))
             valid = True
+
             for json_key_name in vrs_adsb_file_keynames:
                 if json_key_name not in aircraft_record:
                     valid = False
-                    logger.error('Error with aircraft in acList. Missing expected json key: {}'.format(json_key_name))
+                    logger.debug('Aircraft in acList is missing an expected json key: {}'.format(json_key_name))
                     break
+
             if valid:
                 report_time = aircraft_record['PosTime'] / 1000
                 mode_s_hex = aircraft_record['Icao'].upper()
@@ -389,19 +386,23 @@ def get_aircraft_data_from_files(file_directory):
 
                 # s means each position in the track includes the speed
                 if tt == 'a' or tt == 's':
-                    numpos = len(past_track) / 4
-                    for past_track_reading in range(int(numpos)):
-                        if past_track[(past_track_reading * 4) + 3]:
+                    num_positions_in_track = len(past_track) / 4
+                    for past_track_reading_index in range(int(num_positions_in_track)):
+                        # check that the 4th value exists within each track reading
+                        if past_track[(past_track_reading_index * 4) + 3]:
                             if tt == 'a':
-                                altitude = past_track[(past_track_reading * 4) + 3]
+                                altitude = past_track[(past_track_reading_index * 4) + 3]
                             elif tt == 's':
-                                speed = past_track[(past_track_reading * 4) + 3]
-                            lat83 = past_track[(past_track_reading * 4) + 0]
-                            long83 = past_track[(past_track_reading * 4) + 1]
+                                speed = past_track[(past_track_reading_index * 4) + 3]
+                            lat83 = past_track[(past_track_reading_index * 4) + 0]
+                            long83 = past_track[(past_track_reading_index * 4) + 1]
                             if lat83 < -90.0 or lat83 > 90.0 or long83 < -180.0 or long83 > 180.0:
+                                logger.error('Invalid lat/long detected within a trail: {}, {}'.format(lat83, long83))
                                 continue
+
                             # converting millis to seconds
-                            report_time = past_track[(past_track_reading * 4) + 2] / 1000
+                            report_time = past_track[(past_track_reading_index * 4) + 2] / 1000
+
                             seen = seen_pos = 0
                             record = AircraftReport(hex=mode_s_hex,
                                                     time=report_time,
@@ -424,7 +425,8 @@ def get_aircraft_data_from_files(file_directory):
                                                     messages=messages,
                                                     seen_pos=seen_pos,
                                                     category=None)
-                            logger.debug('New report generated from track-based archive JSON record: {}'.format(record))
+
+                            logger.info('New report generated from track-based archive JSON record: {}'.format(record))
                             aircraft_report_list.append(record)
 
         # Load all of the aircraft reports from this JSON file into the DB before moving on to the next file
@@ -458,7 +460,6 @@ def load_aircraft_reports_list_into_db(aircraft_reports_list, radio_receiver, db
                 logger.error('No DB Connection. Aircraft not inserted; {}'.format(aircraft))
         else:
             logger.error("Dropped report - no valid position or no validtrack found: {}".format(aircraft.to_JSON()))
-
 
     if dbconn:
         dbconn.commit()
