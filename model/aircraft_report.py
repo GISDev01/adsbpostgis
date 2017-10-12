@@ -303,7 +303,7 @@ def get_aircraft_data_from_files(file_directory):
         aircraft_report_list = []
         try:
             file_data = json.load(open(json_file, encoding='utf-8'))
-            logger.debug('Success parsing JSON data file: {}'.format(json_file))
+            logger.info('Success parsing JSON data file: {}'.format(json_file))
 
         except:
             # temp workaround to fix malformed JSON in archive files - replace common strin
@@ -434,13 +434,16 @@ def load_aircraft_reports_list_into_db(aircraft_reports_list, radio_receiver, db
 
     for aircraft in aircraft_reports_list:
         reports_loaded += 1
-        if not reports_loaded % 5000:
+        if not reports_loaded % 100000:
             logger.info('Progress loading aircraft reports list into DB: {}/{}'.format(reports_loaded, num_reports))
 
         if aircraft.validposition and aircraft.validtrack:
             aircraft.reporter = radio_receiver.name
             if dbconn:
-                aircraft.send_aircraft_to_db(dbconn)
+                try:
+                    aircraft.send_aircraft_to_db(dbconn)
+                except:
+                    logger.exception('Issue inserting into DB: {}'.format(aircraft))
             else:
                 logger.error('No DB Connection. Aircraft not inserted; {}'.format(aircraft))
         else:
