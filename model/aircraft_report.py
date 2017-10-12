@@ -7,6 +7,7 @@ import json
 import logging
 import os
 import time
+import shutil
 
 # TODO: Refactor the DB connection into a param, so there's not need to import main here
 import main
@@ -421,6 +422,12 @@ def get_aircraft_data_from_files(file_directory):
         load_aircraft_reports_list_into_db(aircraft_reports_list=aircraft_report_list,
                                            radio_receiver=radio_receiver_vrs,
                                            dbconn=main.postgres_db_connection)
+
+        destination = 'ingested'
+        if not os.path.exists(destination):
+            os.makedirs(destination)
+        shutil.copy(json_file, destination)
+
 
     if len(malformed_json_files) > 0:
         logger.info('{} Malformed JSON Files found: {}'.format(len(malformed_json_files), malformed_json_files))

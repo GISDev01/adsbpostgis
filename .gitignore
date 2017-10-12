@@ -5,6 +5,7 @@ config.yml
 /externaldata/faaopendata/faadata_metadata.pdf
 /externaldata/adsbedata/rawdata
 /externaldata/adsbedata/output
+/externaldata/adsbedata/ingested
 
 
 # Byte-compiled / optimized / DLL files
