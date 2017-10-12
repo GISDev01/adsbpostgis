@@ -309,24 +309,11 @@ def get_aircraft_data_from_files(file_directory):
             # temp workaround to fix malformed JSON in archive files - replace common strin
             # issues in-place before parsing
 
-            in_file = open(json_file).read()
-            out_file = open(json_file, 'w')
-
-            # combos of strings in k,v pairs to find and replace, eg. 'findthis', 'replacewiththis'
-            find_replace_dict = {',,{': '{',
-                                 ',{': '{',
-                                 '}\n{': '},\n{',
-                                 ',],"totalAc"': '],"totalAc"'}
-
-            for find_replace_combo in find_replace_dict.keys():
-                in_file = in_file.replace(find_replace_combo, find_replace_dict[find_replace_combo])
-
-            out_file.write(in_file)
-            out_file.close()
+            cleaned_archive_json_file = clean_malformed_json_file(json_file)
 
             # Now that the JSON file is cleaned up, let's try this again
             try:
-                file_data = json.load(open(json_file, encoding='utf-8'))
+                file_data = json.load(open(cleaned_archive_json_file, encoding='utf-8'))
                 logger.info('Success parsing fixed JSON data file: {}'.format(json_file))
 
             except Exception as err:
@@ -424,7 +411,7 @@ def get_aircraft_data_from_files(file_directory):
                                                     category=None)
 
                             logger.debug('New aircraft report generated from within a track within an '
-                                        'acList within an archive JSON record: {}'.format(record))
+                                         'acList within an archive JSON record: {}'.format(record))
                             aircraft_report_list.append(record)
 
                 else:
@@ -556,3 +543,22 @@ def ingest_dump1090_report_list(dumpfmt_aircraft_report_list):
             logger.debug('Skipping this invalid Dump1090 report: ' + json.dumps(dumpfmt_aircraft_report_list))
 
     return dump1090_ingested_reports_list
+
+
+def clean_malformed_json_file(json_file):
+    in_file = open(json_file).read()
+    out_file = open(json_file, 'w')
+
+    # combos of strings in k,v pairs to find and replace, eg. 'findthis', 'replacewiththis'
+    find_replace_dict = {',,{': '{',
+                         ',{': '{',
+                         '}\n{': '},\n{',
+                         ',],"totalAc"': '],"totalAc"'}
+
+    for find_replace_combo in find_replace_dict.keys():
+        in_file = in_file.replace(find_replace_combo, find_replace_dict[find_replace_combo])
+
+    out_file.write(in_file)
+    out_file.close()
+
+    return json_file
