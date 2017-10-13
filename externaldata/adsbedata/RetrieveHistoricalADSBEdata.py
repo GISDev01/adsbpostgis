@@ -13,13 +13,10 @@ import yaml
 from model import aircraft_report
 
 logger = logging.getLogger(__name__)
-zip_dir = 'output'
-
-# TODO: dynamically calculate range of dates
-# current_date_stamp = strftime('%y-%m-%d')
-current_date_stamp = '2017-10-01'
-datestamp_format = '%Y-%m-%d'
 parent_dir = os.path.dirname(os.path.realpath(__file__))
+
+zip_dir = 'output'
+datestamp_format = '%Y-%m-%d'
 
 
 def get_config():
@@ -43,15 +40,21 @@ def get_list_of_datestamps_inclusive(start_date, end_date):
     end_datestamp = datetime.datetime.strptime(end_date, datestamp_format)
     step_size = datetime.timedelta(days=1)
     while start_datestamp <= end_datestamp:
-        datestamps_list += start_datestamp
+        datestamps_list.append(str(start_datestamp.date()))
         start_datestamp += step_size
 
     return datestamps_list
 
 
 local_config = get_config()
-adsbe_download_base_url = local_config['adsbe_url']
+archive_base_url = local_config['archive_base_url']
 
-dl_url = adsbe_download_base_url + '{}.zip'.format(current_date_stamp)
-print(dl_url)
-get_and_load_archive_data_by_date(dl_url)
+start_date = '2017-09-28'
+end_date = '2017-10-02'
+
+datestamps_list = get_list_of_datestamps_inclusive(start_date, end_date)
+
+logger.info(datestamps_list)
+
+# dl_url = adsbe_download_base_url + '{}.zip'.format(current_date_stamp)
+# get_and_load_archive_data_by_date(dl_url)
