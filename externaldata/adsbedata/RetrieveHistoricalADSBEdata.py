@@ -25,13 +25,13 @@ def get_config():
 
 
 def get_and_load_archive_data_by_date(zip_url):
-    # req = requests.get(zip_url)
-    # res_zip = zipfile.ZipFile(io.BytesIO(req.content))
-    # if not os.path.exists(zip_dir):
-    #     os.makedirs(zip_dir)
-    # res_zip.extractall(zip_dir)
+    req = requests.get(zip_url)
+    res_zip = zipfile.ZipFile(io.BytesIO(req.content))
+    if not os.path.exists(zip_dir):
+        os.makedirs(zip_dir)
+    res_zip.extractall(zip_dir)
 
-    aircraft_report.get_aircraft_data_from_files(os.path.join(parent_dir, zip_dir))
+    # aircraft_report.get_aircraft_data_from_files(os.path.join(parent_dir, zip_dir))
 
 
 def get_list_of_datestamps_inclusive(start_date, end_date):
@@ -49,12 +49,12 @@ def get_list_of_datestamps_inclusive(start_date, end_date):
 local_config = get_config()
 archive_base_url = local_config['archive_base_url']
 
-start_date = '2017-09-28'
-end_date = '2017-10-02'
+start_date = '2017-10-02'
+end_date = '2017-10-05'
 
 datestamps_list = get_list_of_datestamps_inclusive(start_date, end_date)
 
-logger.info(datestamps_list)
-
-# dl_url = adsbe_download_base_url + '{}.zip'.format(current_date_stamp)
-# get_and_load_archive_data_by_date(dl_url)
+for datestamp in datestamps_list:
+    logger.info(datestamps_list)
+    archive_dl_url = archive_base_url + '{}.zip'.format(datestamp)
+    get_and_load_archive_data_by_date(archive_dl_url)

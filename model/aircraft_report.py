@@ -184,9 +184,9 @@ class AircraftReport(object):
                       reporter_format.format(self.reporter), self.time, self.messages, self.is_anon]
 
             sql = '''UPDATE aircraftreports SET (mode_s_hex, squawk, flight, is_metric, is_mlat, altitude, speed, vert_rate, bearing, report_location, latitude83, longitude83, messages_sent, report_epoch, reporter, rssi, nucp, is_ground, is_anon)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, ST_PointFromText(%s, 4326), %s, %s, %s, %s, %s, %s, %s, %s, %s)
-            WHERE mode_s_hex like %s and squawk like %s and flight like %s and reporter like %s
-            and report_epoch = %s and messages_sent = %s'''
+        VALUES (%S, %S, %S, %S, %S, %S, %S, %S, %S, ST_PointFromText(%S, 4326), %S, %S, %S, %S, %S, %S, %S, %S, %S)
+            WHERE mode_s_hex LIKE %s AND squawk LIKE %s AND flight LIKE %s AND reporter LIKE %s
+            AND report_epoch = %s AND messages_sent = %s'''
 
         else:
             logger.debug('Inserting Aircraft record: {}'.format(self))
@@ -195,8 +195,8 @@ class AircraftReport(object):
                       self.track, coordinates, self.lat, self.lon,
                       self.messages, self.time, self.reporter,
                       self.rssi, self.nucp, self.is_ground, self.is_anon]
-            sql = '''INSERT into aircraftreports (mode_s_hex, squawk, flight, is_metric, is_mlat, altitude, speed, vert_rate, bearing, report_location, latitude83, longitude83, messages_sent, report_epoch, reporter, rssi, nucp, is_ground, is_anon)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, ST_PointFromText(%s, 4326), %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            sql = '''INSERT INTO aircraftreports (mode_s_hex, squawk, flight, is_metric, is_mlat, altitude, speed, vert_rate, bearing, report_location, latitude83, longitude83, messages_sent, report_epoch, reporter, rssi, nucp, is_ground, is_anon)
+                    VALUES (%S, %S, %S, %S, %S, %S, %S, %S, %S, ST_PointFromText(%S, 4326), %S, %S, %S, %S, %S, %S, %S, %S, %S)
                     ON CONFLICT DO NOTHING;'''
 
         logger.debug(cur.mogrify(sql, params))
@@ -212,7 +212,7 @@ class AircraftReport(object):
         :return: 
         """
         cur = db_connection.cursor()
-        sql = '''DELETE from aircraftreports WHERE '''
+        sql = '''DELETE FROM aircraftreports WHERE '''
         sql = sql + (" mode_s_hex like '%s' " % self.mode_s_hex)
         sql = sql + (" and flight like '%s' " % flight_format.format(self.flight))
         sql = sql + (" and reporter like '%s'" %
@@ -427,7 +427,6 @@ def get_aircraft_data_from_files(file_directory):
         if not os.path.exists(destination):
             os.makedirs(destination)
         shutil.copy(json_file, destination)
-
 
     if len(malformed_json_files) > 0:
         logger.info('{} Malformed JSON Files found: {}'.format(len(malformed_json_files), malformed_json_files))
