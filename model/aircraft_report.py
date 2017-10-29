@@ -184,7 +184,7 @@ class AircraftReport(object):
                       reporter_format.format(self.reporter), self.time, self.messages, self.is_anon]
 
             sql = '''UPDATE aircraftreports SET (mode_s_hex, squawk, flight, is_metric, is_mlat, altitude, speed, vert_rate, bearing, report_location, latitude83, longitude83, messages_sent, report_epoch, reporter, rssi, nucp, is_ground, is_anon)
-        VALUES (%S, %S, %S, %S, %S, %S, %S, %S, %S, ST_PointFromText(%S, 4326), %S, %S, %S, %S, %S, %S, %S, %S, %S)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, ST_PointFromText(%s, 4326), %s, %s, %s, %s, %s, %s, %s, %s, %s)
             WHERE mode_s_hex LIKE %s AND squawk LIKE %s AND flight LIKE %s AND reporter LIKE %s
             AND report_epoch = %s AND messages_sent = %s'''
 
@@ -196,7 +196,7 @@ class AircraftReport(object):
                       self.messages, self.time, self.reporter,
                       self.rssi, self.nucp, self.is_ground, self.is_anon]
             sql = '''INSERT INTO aircraftreports (mode_s_hex, squawk, flight, is_metric, is_mlat, altitude, speed, vert_rate, bearing, report_location, latitude83, longitude83, messages_sent, report_epoch, reporter, rssi, nucp, is_ground, is_anon)
-                    VALUES (%S, %S, %S, %S, %S, %S, %S, %S, %S, ST_PointFromText(%S, 4326), %S, %S, %S, %S, %S, %S, %S, %S, %S)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, ST_PointFromText(%s, 4326), %s, %s, %s, %s, %s, %s, %s, %s, %s)
                     ON CONFLICT DO NOTHING;'''
 
         logger.debug(cur.mogrify(sql, params))
