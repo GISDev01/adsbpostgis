@@ -30,5 +30,6 @@ def database_connection(dbname=None, dbuser=None, dbhost=None, dbpasswd=None, db
         connection = psycopg2.connect(connect_str)
     except:
         logger.exception("Can't connect to aircraft report database with " + connect_str)
+    logger.info('Connected to postgres')
     return connection
 

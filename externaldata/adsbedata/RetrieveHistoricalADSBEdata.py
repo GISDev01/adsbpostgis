@@ -24,17 +24,24 @@ def get_config():
         return yaml.load(yaml_config_file)
 
 
-def get_and_load_archive_data_by_date(zip_url):
-    req = requests.get(zip_url)
-    res_zip = zipfile.ZipFile(io.BytesIO(req.content))
-    if not os.path.exists(zip_dir):
-        os.makedirs(zip_dir)
-    res_zip.extractall(zip_dir)
+def get_and_load_archive_data_by_date(zip_url, zip_filename):
+    logger.info('Getting and Loading Archive Data for URL: {}'.format(zip_url))
+    extract_dir = zip_filename[:-4]
+    if not os.path.exists(os.path.join(zip_dir, extract_dir)):
+        req = requests.get(zip_url)
+        res_zip = zipfile.ZipFile(io.BytesIO(req.content))
+        if not os.path.exists(zip_dir):
+            os.makedirs(zip_dir)
+        logger.info('Extracting the downloaded zip.')
+        res_zip.extractall(os.path.join(zip_dir, extract_dir))
+    else:
+        logger.warning('Skipping this zip URL - it''s already been downloaded and extracted.')
 
-    # aircraft_report.get_aircraft_data_from_files(os.path.join(parent_dir, zip_dir))
+    aircraft_report.get_aircraft_data_from_files(os.path.join(zip_dir, extract_dir))
 
 
 def get_list_of_datestamps_inclusive(start_date, end_date):
+    logger.info('Creating list of datestamps to query archival data')
     datestamps_list = []
     start_datestamp = datetime.datetime.strptime(start_date, datestamp_format)
     end_datestamp = datetime.datetime.strptime(end_date, datestamp_format)
@@ -49,12 +56,13 @@ def get_list_of_datestamps_inclusive(start_date, end_date):
 local_config = get_config()
 archive_base_url = local_config['archive_base_url']
 
-start_date = '2017-10-02'
-end_date = '2017-10-05'
+start_date = '2017-10-26'
+end_date = '2017-10-26'
 
 datestamps_list = get_list_of_datestamps_inclusive(start_date, end_date)
 
 for datestamp in datestamps_list:
-    logger.info(datestamps_list)
-    archive_dl_url = archive_base_url + '{}.zip'.format(datestamp)
-    get_and_load_archive_data_by_date(archive_dl_url)
+    logger.info('Retrieving data for datestamp: {}'.format(datestamp))
+    zip_name = '{}.zip'.format(datestamp)
+    archive_dl_url = archive_base_url + zip_name
+    get_and_load_archive_data_by_date(archive_dl_url, zip_name)

@@ -91,5 +91,3 @@ def harvest_aircraft_json_from_pi():
 if __name__ == '__main__':
     logger.debug('Entry from main.py main started')
     harvest_aircraft_json_from_pi()
-    # directory_path = os.path.join('externaldata', 'adsbedata', 'rawdata', '2016-06-20')
-    # aircraft_report.get_aircraft_data_from_files(directory_path)
