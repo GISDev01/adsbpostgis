@@ -27,9 +27,10 @@ cur = dbconn.cursor()
 sql = '''
 		SELECT *
 			FROM aircraftreports 
-			  WHERE mode_s_hex like \'%s\' ''' % 'modes'
+			    WHERE flight like \'%s\'
+			        ORDER BY report_epoch ''' % ''
 
 cur.execute(sql)
 for row in cur:
     logger.info(row)
-
+    logger.info(row[0])
