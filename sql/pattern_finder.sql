@@ -31,49 +31,63 @@ BEGIN
     FOR rPoint IN
         WITH
             pts as (
-                SELECT report_location::geometry as geom,report_epoch,row_number() OVER () as rnum
+            -- cast geography to geometry
+                SELECT report_location::geometry as geom,row_number() OVER () as rownum
                 FROM adsb.public.aircraftreports
                 WHERE mode_s_hex=modeshex
+                -- get 2 points at a time to for each line segment over the path(s)
                 ORDER BY 2)
-            SELECT ST_AsText(ST_MakeLine(ARRAY[a.geom, b.geom])) AS geom, a.rnum, b.rnum
+            --
+            SELECT ST_AsText(ST_MakeLine(ARRAY[a.geom, b.geom])) AS geom, a.rownum, b.rownum
             FROM pts as a, pts as b
-            WHERE a.rnum = b.rnum-1 AND b.rnum > 1
+            WHERE a.rownum = b.rownum-1 AND b.rownum > 1
+
         LOOP
+        raise notice 'rPoint: %', rPoint;
 
         -- if this is the start of a new line
-        -- then start the segment, otherwise add the point to the segment
+        -- then start the segment, otherwise add the point to the existing segment
         if gSegment is null then
+            -- add this point as the first point of this new segment
             gSegment=rPoint.geom;
-        elseif rPoint.geom::geometry=gLastPoint::geometry then
 
-        -- do not add this point to the segment because it is at the same location as the last point
+        -- in the middle of creating a segment, and this will detect 2 points in succession
+        -- that have the same geometry - skip this point (don't add to this segment) if this happens
+        elseif rPoint.geom::geometry=gLastPoint::geometry then
+          -- do not add this point to the segment because it is at the same location as the last point in the segment
+
         else
-        -- add this point to the line
-        gSegment=ST_Makeline(gSegment,rPoint.geom);
+          -- a segment is in progress, so we add this point to the line
+          gSegment=ST_Makeline(gSegment,rPoint.geom);
         end if;
+
         -- ST_BuildArea will return true if the line segment is noded and closed
         -- we must also flatten the line to 2D
         -- let's also make sure that there are more than three points in our line in order to define a pattern
         gPatternPolygon=ST_BuildArea(ST_Node(ST_Force2D(gSegment)));
+
+
         if gPatternPolygon is not NULL and ST_Numpoints(gSegment) > 3 then
-        -- we found this specific pattern that we're checking for
-        iPatterns:=iPatterns+1;
+          -- we found the pattern that we're checking for as we loop through the points
+          iPatterns:=iPatterns+1;
 
-        -- get the intersection point (start/end)
-        gIntersectionPoint=ST_Intersection(gSegment::geometry,rPoint.geom::geometry);
+          -- get the intersection point (start/end)
+          gIntersectionPoint=ST_Intersection(gSegment::geometry,rPoint.geom::geometry);
 
-        -- get the centroid of the pattern
-        gPatternCentroid=ST_Centroid(gPatternPolygon);
+          -- get the centroid of the pattern
+          gPatternCentroid=ST_Centroid(gPatternPolygon);
+          RAISE NOTICE 'gPatternCentroid: %.', gPatternCentroid;
 
-        -- start building a new line
-        gSegment=null;
 
-        PATTERNNUMBER   := iPatterns;
-        PATTERNGEOMETRY := gPatternPolygon;
-        PATTERNSTARTEND := gIntersectionPoint;
-        PATTERNCENTROID := gPatternCentroid;
+          -- start building a new line
+          gSegment=null;
 
-        RETURN NEXT;
+          PATTERNNUMBER   := iPatterns;
+          PATTERNGEOMETRY := gPatternPolygon;
+          PATTERNSTARTEND := gIntersectionPoint;
+          PATTERNCENTROID := gPatternCentroid;
+
+          RETURN NEXT;
         end if;
         -- keep track of last segment
         gLastPoint=rPoint.geom;
