@@ -1,3 +1,7 @@
+
+SELECT * FROM find_pattern_num('ADAFB5');
+SELECT COUNT(*) FROM aircraftreports WHERE mode_s_hex='ACBF73';
+
 SELECT COUNT(*) FROM aircraftreports;
 SELECT COUNT(*) FROM aircraftreports WHERE altitude < 1000;
 SELECT COUNT(*) FROM aircraftreports WHERE altitude > 40000;
