@@ -67,7 +67,7 @@ BEGIN
         gPatternPolygon=ST_BuildArea(ST_Node(ST_Force2D(gSegment)));
 
 
-        if gPatternPolygon is not NULL and ST_Numpoints(gSegment) > 3 then
+        if gPatternPolygon is not NULL and ST_Numpoints(gSegment) > 10 then
           -- we found the pattern that we're checking for as we loop through the points
           iPatterns:=iPatterns+1;
 
@@ -76,7 +76,7 @@ BEGIN
 
           -- get the centroid of the pattern
           gPatternCentroid=ST_Centroid(gPatternPolygon);
-          RAISE NOTICE 'gPatternCentroid: %.', gPatternCentroid;
+          RAISE NOTICE 'gPatternCentroid: %/%.', ST_X(gPatternCentroid), ST_Y(gPatternCentroid);
 
 
           -- start building a new line
