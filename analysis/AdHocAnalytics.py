@@ -1,7 +1,8 @@
-from utils import postgres as pg_utils
-import os
-import yaml
 import logging
+
+import yaml
+
+from utils import postgres as pg_utils
 
 with open('../config.yml', 'r') as yaml_config_file:
     config = yaml.load(yaml_config_file)
@@ -27,10 +28,19 @@ cur = dbconn.cursor()
 sql = '''
 		SELECT *
 			FROM aircraftreports 
-			    WHERE flight like \'%s\'
-			        ORDER BY report_epoch ''' % ''
+			    WHERE aircraftreports.mode_s_hex LIKE 'ADAFB5'
+			        ORDER BY report_epoch '''
 
 cur.execute(sql)
-for row in cur:
+all_timestamps_per_mode_s_hex = [item for item in cur.fetchall()]
+
+i = 0
+num_rows = len(all_timestamps_per_mode_s_hex)
+for row in all_timestamps_per_mode_s_hex:
     logger.info(row)
-    logger.info(row[0])
+    logger.info(all_timestamps_per_mode_s_hex[i + 1])
+    i += 1
+    # Skip the last record in the list
+    if i == num_rows-1:
+        break
+
