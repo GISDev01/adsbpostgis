@@ -24,33 +24,22 @@ dbconn = pg_utils.database_connection(dbname=db_name,
                                       dbuser=db_user,
                                       dbpasswd=db_pwd)
 
-cur = dbconn.cursor()
-
-mode_s = 'ADAFB5'
-sql = '''
-		SELECT *
-			FROM aircraftreports 
-			    WHERE aircraftreports.mode_s_hex LIKE '{}'
-			        ORDER BY report_epoch '''.format(mode_s)
-
-cur.execute(sql)
-all_timestamps_per_mode_s_hex = [item for item in cur.fetchall()]
-
-i = 0
-num_rows = len(all_timestamps_per_mode_s_hex)
-for row in all_timestamps_per_mode_s_hex:
-    timestamp1 = row[13]
-    timestamp2 = all_timestamps_per_mode_s_hex[i + 1][13]
-    time_diff_in_secs = timestamp2 - timestamp1
-    logger.info('{}'.format(time_diff_in_secs))
-    i += 1
-    # Skip the last record in the list
-    if i == num_rows-1:
-        break
-
 
 def get_unique_mode_s_without_itin_assigned():
     uniq_mode_s_cursor = dbconn.cursor()
+
+    sql = '''
+    		SELECT aircraftreports.mode_s_hex
+    			FROM aircraftreports 
+    			    WHERE aircraftreports.itinerary_id IS NULL
+    			        GROUP BY mode_s_hex'''
+    uniq_mode_s_cursor.execute(sql)
+
+    return [item for item in uniq_mode_s_cursor.fetchall()]
+
+
+def assign_itinerary_id_for_mode_s(mode_s_hex):
+    cur = dbconn.cursor()
 
     mode_s = 'ADAFB5'
     sql = '''
@@ -58,6 +47,18 @@ def get_unique_mode_s_without_itin_assigned():
     			FROM aircraftreports 
     			    WHERE aircraftreports.mode_s_hex LIKE '{}'
     			        ORDER BY report_epoch '''.format(mode_s)
-    uniq_mode_s_cursor.execute(sql)
 
-    return [item for item in uniq_mode_s_cursor.fetchall()]
+    cur.execute(sql)
+    all_timestamps_per_mode_s_hex = [item for item in cur.fetchall()]
+
+    i = 0
+    num_rows = len(all_timestamps_per_mode_s_hex)
+    for row in all_timestamps_per_mode_s_hex:
+        timestamp1 = row[13]
+        timestamp2 = all_timestamps_per_mode_s_hex[i + 1][13]
+        time_diff_in_secs = timestamp2 - timestamp1
+        logger.info('{}'.format(time_diff_in_secs))
+        i += 1
+        # Skip the last record in the list
+        if i == num_rows - 1:
+            break
