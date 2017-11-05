@@ -1,8 +1,8 @@
--- CREATE DATABASE "adsb"
--- WITH
--- OWNER = postgres
--- ENCODING = 'UTF8'
--- CONNECTION LIMIT = -1;
+CREATE DATABASE "adsb"
+WITH
+OWNER = postgres
+ENCODING = 'UTF8'
+CONNECTION LIMIT = -1;
 
 CREATE EXTENSION IF NOT EXISTS postgis WITH SCHEMA public;
 
@@ -30,6 +30,7 @@ CREATE TABLE aircraftreports (
   nucp            INTEGER,
   is_ground       BOOLEAN,
   is_anon         BOOLEAN,
+  itinerary_id    TEXT,
   UNIQUE          (mode_s_hex, report_epoch)
 );
 
@@ -114,6 +115,9 @@ COMMENT ON COLUMN aircraftreports.report_location IS 'Encoded lat/lon of report 
 --
 
 COMMENT ON COLUMN aircraftreports.report_epoch IS 'Timestamp of report as seconds from epoch.';
+
+
+COMMENT ON COLUMN aircraftreports.itinerary_id IS 'Dynamically calculated to group points as one continuous flight.';
 
 --
 -- Name: mode_s_hex_idx; Type: INDEX; Schema: public; Owner: postgres
