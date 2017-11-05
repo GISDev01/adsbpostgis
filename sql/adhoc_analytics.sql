@@ -1,5 +1,6 @@
 SELECT *
-FROM find_pattern_num('ADAFB5');
+FROM find_pattern_num('A8D33A');
+-- A8D33A, ADAFB5
 
 SELECT *
 FROM aircraftreports

@@ -20,13 +20,13 @@ $BODY$
 
 
 DECLARE
-  currentSubsegment       RECORD;
-  gSegment           GEOMETRY = NULL;
-  gLastPoint         GEOMETRY = NULL;
-  gPatternPolygon    GEOMETRY = NULL;
-  gIntersectionPoint GEOMETRY = NULL;
-  gPatternCentroid   GEOMETRY = NULL;
-  iPatterns          INTEGER := 0;
+  currentSubsegment        RECORD;
+  fullSegment              GEOMETRY = NULL;
+  prevPoint                GEOMETRY = NULL;
+  patternPoly              GEOMETRY = NULL;
+  intersectPtOnFullSegment GEOMETRY = NULL;
+  patternPolyCentroid      GEOMETRY = NULL;
+  numPatternsDetected      INTEGER := 0;
 BEGIN
   FOR currentSubsegment IN
   WITH
@@ -39,9 +39,6 @@ BEGIN
             ORDER BY report_epoch )   AS rownum
         FROM adsb.public.aircraftreports
         WHERE mode_s_hex = modeshex)
-  --AND
-  --report_epoch < 1508975975)
-  --ORDER BY report_epoch)
 
   SELECT
     ST_AsText(ST_MakeLine(ARRAY [a.geom, b.geom])) AS geom,
@@ -49,68 +46,66 @@ BEGIN
     b.rownum
   FROM pts AS a,
     pts AS b
+  -- Work-around to get the current point and the next point in order, since rownum sorted by timestamp
   WHERE a.rownum = b.rownum - 1
         AND
         b.rownum > 1
-    --ORDER BY a.report_epoch
 
 
   LOOP
     RAISE NOTICE 'Current 2-pt sub-segment: %', currentSubsegment;
 
-    -- if this is the start of a new line
-    -- then start the segment, otherwise add the point to the existing segment
-    IF gSegment IS NULL
+    -- if this is the start of a new full segment
+    -- then start the full segment, otherwise add the point to the existing full segment
+    IF fullSegment IS NULL
     THEN
-      -- add this point as the first point of this new segment
-      gSegment = currentSubsegment.geom;
+      -- add this point as the first point of this new full segment
+      fullSegment = currentSubsegment.geom;
 
-      -- in the middle of creating a segment, and this will detect 2 points in succession
-      -- that have the same geometry - skip this point (don't add to this segment) if this happens
-    ELSEIF currentSubsegment.geom :: GEOMETRY = gLastPoint :: GEOMETRY
+
+    ELSEIF currentSubsegment.geom :: GEOMETRY = prevPoint :: GEOMETRY
       THEN
-    -- do not add this point to the segment because it is at the same location as the last point in the segment
+      -- in the middle of creating a segment, and this will detect 2 identical points in succession
+      -- that have the same geometry, so we skip this point (don't add to this full segment)
 
     ELSE
-      -- a segment is in progress, so we add this point to the line
-      gSegment = ST_Makeline(gSegment, currentSubsegment.geom);
+      -- a full segment is already in progress, so we add this sub-segment to the full segment
+      fullSegment = ST_Makeline(fullSegment, currentSubsegment.geom);
     END IF;
 
-    -- ST_BuildArea will return true if the line segment is noded and closed
-    -- we must also flatten the line to 2D
-    -- let's also make sure that there are more than three points in our line in order to define a pattern
-    --gPatternPolygon=ST_BuildArea(ST_Node(ST_Force2D(gSegment)));
-    gPatternPolygon = ST_BuildArea(ST_Node(ST_Force2D(gSegment)));
+    -- ST_BuildArea will only return true if the full line segment is noded and closed
+    patternPoly = ST_BuildArea(ST_Node(ST_Force2D(fullSegment)));
 
 
-    IF gPatternPolygon IS NOT NULL AND ST_Numpoints(gSegment) > 10
+    IF patternPoly IS NOT NULL AND ST_Numpoints(fullSegment) > 10
     THEN
-      -- we found the pattern that we're checking for as we loop through the points
-      iPatterns:=iPatterns + 1;
+      -- we found the pattern that we're checking for as we iterate through the points
+      numPatternsDetected:=numPatternsDetected + 1;
 
-      -- get the intersection point (start/end)
-      gIntersectionPoint = ST_Intersection(gSegment :: GEOMETRY, currentSubsegment.geom :: GEOMETRY);
+      -- get the intersection point (start/end) along the full segment when it self-intersected
+      intersectPtOnFullSegment = ST_Intersection(fullSegment :: GEOMETRY, currentSubsegment.geom :: GEOMETRY);
 
-      -- get the centroid of the pattern
-      gPatternCentroid = ST_Centroid(gPatternPolygon);
-      RAISE NOTICE 'gPatternCentroid: %, %', ST_X(gPatternCentroid), ST_Y(gPatternCentroid);
+      -- get the centroid of the pattern that is detected
+      patternPolyCentroid = ST_Centroid(patternPoly);
 
-      -- start building a new line segment
-      gSegment = NULL;
+      RAISE NOTICE 'patternPolyCentroid: %, %', ST_X(patternPolyCentroid), ST_Y(patternPolyCentroid);
 
-      PATTERNNUMBER   := iPatterns;
-      PATTERNGEOMETRY := gPatternPolygon;
-      PATTERNSTARTEND := gIntersectionPoint;
-      PATTERNCENTROID := gPatternCentroid;
+      -- reset the full segment and start building a new full line segment with the next point in line
+      fullSegment = NULL;
+
+      PATTERNNUMBER   := numPatternsDetected;
+      PATTERNGEOMETRY := patternPoly;
+      PATTERNSTARTEND := intersectPtOnFullSegment;
+      PATTERNCENTROID := patternPolyCentroid;
 
       RETURN NEXT;
     END IF;
 
-    -- keep track of last point processed
-    gLastPoint = currentSubsegment.geom;
+    -- keep track of previous point processed
+    prevPoint = currentSubsegment.geom;
   END LOOP;
 
-  RAISE NOTICE 'Total patterns detected: %.', iPatterns;
+  RAISE NOTICE 'Total patterns detected: %.', numPatternsDetected;
 END;
 $BODY$
 
