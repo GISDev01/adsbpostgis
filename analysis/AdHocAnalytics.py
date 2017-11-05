@@ -37,8 +37,10 @@ all_timestamps_per_mode_s_hex = [item for item in cur.fetchall()]
 i = 0
 num_rows = len(all_timestamps_per_mode_s_hex)
 for row in all_timestamps_per_mode_s_hex:
-    logger.info(row)
-    logger.info(all_timestamps_per_mode_s_hex[i + 1])
+    timestamp1 = row[13]
+    timestamp2 = all_timestamps_per_mode_s_hex[i + 1][13]
+    time_diff_in_secs = timestamp2 - timestamp1
+    logger.info('{}'.format(time_diff_in_secs))
     i += 1
     # Skip the last record in the list
     if i == num_rows-1:
