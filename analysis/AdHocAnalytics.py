@@ -25,11 +25,13 @@ dbconn = pg_utils.database_connection(dbname=db_name,
                                       dbpasswd=db_pwd)
 
 cur = dbconn.cursor()
+
+mode_s = 'ADAFB5'
 sql = '''
 		SELECT *
 			FROM aircraftreports 
-			    WHERE aircraftreports.mode_s_hex LIKE 'ADAFB5'
-			        ORDER BY report_epoch '''
+			    WHERE aircraftreports.mode_s_hex LIKE '{}'
+			        ORDER BY report_epoch '''.format(mode_s)
 
 cur.execute(sql)
 all_timestamps_per_mode_s_hex = [item for item in cur.fetchall()]
@@ -46,3 +48,16 @@ for row in all_timestamps_per_mode_s_hex:
     if i == num_rows-1:
         break
 
+
+def get_unique_mode_s_without_itin_assigned():
+    uniq_mode_s_cursor = dbconn.cursor()
+
+    mode_s = 'ADAFB5'
+    sql = '''
+    		SELECT *
+    			FROM aircraftreports 
+    			    WHERE aircraftreports.mode_s_hex LIKE '{}'
+    			        ORDER BY report_epoch '''.format(mode_s)
+    uniq_mode_s_cursor.execute(sql)
+
+    return [item for item in uniq_mode_s_cursor.fetchall()]
