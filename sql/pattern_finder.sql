@@ -1,16 +1,17 @@
-DROP FUNCTION adsb.public.find_pattern_num(modeshex CHAR);
+DROP FUNCTION adsb.public.find_pattern_num(modeshex CHAR );
 
-create function adsb.public.find_pattern_num(
-    IN  modeshex        CHAR,
-    OUT patternnumber   int,
-    OUT patterngeometry geometry,
-    OUT patternstartend geometry,
-    OUT patterncentroid geometry
-    )
-  RETURNS SETOF record AS
+CREATE FUNCTION adsb.public.find_pattern_num(
+  IN  modeshex        CHAR,
+  OUT patternnumber   INT,
+  OUT patterngeometry GEOMETRY,
+  OUT patternstartend GEOMETRY,
+  OUT patterncentroid GEOMETRY
+)
+  RETURNS SETOF RECORD AS
 $BODY$
 
 -- Iterate through the points for this specific mode_s_hex_code, building a line as we go
+-- we build the line using subsegments that are created between every pair of neighboring points
 -- If the line creates a pattern then we count a it and start over building a new line
 --     add the intersection point to the returning recordset
 --     add the centroid of the pattern to the resulting recordset
@@ -19,82 +20,100 @@ $BODY$
 
 
 DECLARE
-    rPoint              RECORD;
-    gSegment            geometry = NULL;
-    gLastPoint          geometry = NULL;
-    gPatternPolygon     geometry = NULL;
-    gIntersectionPoint  geometry = NULL;
-    gPatternCentroid    geometry = NULL;
-    iPatterns           integer := 0;
+  currentSubsegment       RECORD;
+  gSegment           GEOMETRY = NULL;
+  gLastPoint         GEOMETRY = NULL;
+  gPatternPolygon    GEOMETRY = NULL;
+  gIntersectionPoint GEOMETRY = NULL;
+  gPatternCentroid   GEOMETRY = NULL;
+  iPatterns          INTEGER := 0;
 BEGIN
-    -- for each line segment in Point Path
-    FOR rPoint IN
-        WITH
-            pts as (
-            -- cast geography to geometry
-                SELECT report_location::geometry as geom,row_number() OVER () as rownum
-                FROM adsb.public.aircraftreports
-                WHERE mode_s_hex=modeshex
-                -- get 2 points at a time to for each line segment over the path(s)
-                ORDER BY 2)
-            --
-            SELECT ST_AsText(ST_MakeLine(ARRAY[a.geom, b.geom])) AS geom, a.rownum, b.rownum
-            FROM pts as a, pts as b
-            WHERE a.rownum = b.rownum-1 AND b.rownum > 1
+  FOR currentSubsegment IN
+  WITH
+      pts AS (
+        SELECT
+          report_location :: GEOMETRY AS geom,
+          report_epoch,
+          row_number()
+          OVER (
+            ORDER BY report_epoch )   AS rownum
+        FROM adsb.public.aircraftreports
+        WHERE mode_s_hex = modeshex)
+  --AND
+  --report_epoch < 1508975975)
+  --ORDER BY report_epoch)
 
-        LOOP
-        raise notice 'rPoint: %', rPoint;
-
-        -- if this is the start of a new line
-        -- then start the segment, otherwise add the point to the existing segment
-        if gSegment is null then
-            -- add this point as the first point of this new segment
-            gSegment=rPoint.geom;
-
-        -- in the middle of creating a segment, and this will detect 2 points in succession
-        -- that have the same geometry - skip this point (don't add to this segment) if this happens
-        elseif rPoint.geom::geometry=gLastPoint::geometry then
-          -- do not add this point to the segment because it is at the same location as the last point in the segment
-
-        else
-          -- a segment is in progress, so we add this point to the line
-          gSegment=ST_Makeline(gSegment,rPoint.geom);
-        end if;
-
-        -- ST_BuildArea will return true if the line segment is noded and closed
-        -- we must also flatten the line to 2D
-        -- let's also make sure that there are more than three points in our line in order to define a pattern
-        gPatternPolygon=ST_BuildArea(ST_Node(ST_Force2D(gSegment)));
+  SELECT
+    ST_AsText(ST_MakeLine(ARRAY [a.geom, b.geom])) AS geom,
+    a.rownum,
+    b.rownum
+  FROM pts AS a,
+    pts AS b
+  WHERE a.rownum = b.rownum - 1
+        AND
+        b.rownum > 1
+    --ORDER BY a.report_epoch
 
 
-        if gPatternPolygon is not NULL and ST_Numpoints(gSegment) > 10 then
-          -- we found the pattern that we're checking for as we loop through the points
-          iPatterns:=iPatterns+1;
+  LOOP
+    RAISE NOTICE 'Current 2-pt sub-segment: %', currentSubsegment;
 
-          -- get the intersection point (start/end)
-          gIntersectionPoint=ST_Intersection(gSegment::geometry,rPoint.geom::geometry);
+    -- if this is the start of a new line
+    -- then start the segment, otherwise add the point to the existing segment
+    IF gSegment IS NULL
+    THEN
+      -- add this point as the first point of this new segment
+      gSegment = currentSubsegment.geom;
 
-          -- get the centroid of the pattern
-          gPatternCentroid=ST_Centroid(gPatternPolygon);
-          RAISE NOTICE 'gPatternCentroid: %/%.', ST_X(gPatternCentroid), ST_Y(gPatternCentroid);
+      -- in the middle of creating a segment, and this will detect 2 points in succession
+      -- that have the same geometry - skip this point (don't add to this segment) if this happens
+    ELSEIF currentSubsegment.geom :: GEOMETRY = gLastPoint :: GEOMETRY
+      THEN
+    -- do not add this point to the segment because it is at the same location as the last point in the segment
+
+    ELSE
+      -- a segment is in progress, so we add this point to the line
+      gSegment = ST_Makeline(gSegment, currentSubsegment.geom);
+    END IF;
+
+    -- ST_BuildArea will return true if the line segment is noded and closed
+    -- we must also flatten the line to 2D
+    -- let's also make sure that there are more than three points in our line in order to define a pattern
+    --gPatternPolygon=ST_BuildArea(ST_Node(ST_Force2D(gSegment)));
+    gPatternPolygon = ST_BuildArea(ST_Node(ST_Force2D(gSegment)));
 
 
-          -- start building a new line
-          gSegment=null;
+    IF gPatternPolygon IS NOT NULL AND ST_Numpoints(gSegment) > 10
+    THEN
+      -- we found the pattern that we're checking for as we loop through the points
+      iPatterns:=iPatterns + 1;
 
-          PATTERNNUMBER   := iPatterns;
-          PATTERNGEOMETRY := gPatternPolygon;
-          PATTERNSTARTEND := gIntersectionPoint;
-          PATTERNCENTROID := gPatternCentroid;
+      -- get the intersection point (start/end)
+      gIntersectionPoint = ST_Intersection(gSegment :: GEOMETRY, currentSubsegment.geom :: GEOMETRY);
 
-          RETURN NEXT;
-        end if;
-        -- keep track of last segment
-        gLastPoint=rPoint.geom;
-    END LOOP;
-    RAISE NOTICE 'Total patterns detected: %.', iPatterns;
+      -- get the centroid of the pattern
+      gPatternCentroid = ST_Centroid(gPatternPolygon);
+      RAISE NOTICE 'gPatternCentroid: %, %', ST_X(gPatternCentroid), ST_Y(gPatternCentroid);
+
+      -- start building a new line segment
+      gSegment = NULL;
+
+      PATTERNNUMBER   := iPatterns;
+      PATTERNGEOMETRY := gPatternPolygon;
+      PATTERNSTARTEND := gIntersectionPoint;
+      PATTERNCENTROID := gPatternCentroid;
+
+      RETURN NEXT;
+    END IF;
+
+    -- keep track of last point processed
+    gLastPoint = currentSubsegment.geom;
+  END LOOP;
+
+  RAISE NOTICE 'Total patterns detected: %.', iPatterns;
 END;
 $BODY$
-  LANGUAGE plpgsql STABLE
-  COST 1000
-  ROWS 10000;
+
+LANGUAGE plpgsql STABLE
+COST 100
+ROWS 1000;
