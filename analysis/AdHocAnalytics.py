@@ -38,17 +38,15 @@ def get_unique_mode_s_without_itin_assigned():
     return [item for item in uniq_mode_s_cursor.fetchall()]
 
 
-def assign_itinerary_id_for_mode_s(mode_s_hex):
+def assign_itinerary_id_for_mode_s(mode_s_hex_for_update):
     cur = dbconn.cursor()
+    itinerary_id = 'TEST1'
+    cur.execute("UPDATE aircraftreports "
+                "SET aircraftreports.itinerary_id='{0}' "
+                "WHERE aircraftreports.mode_s_hex = '{1}'".format(itinerary_id, mode_s_hex_for_update))
 
-    mode_s = 'ADAFB5'
-    sql = '''
-    		SELECT *
-    			FROM aircraftreports 
-    			    WHERE aircraftreports.mode_s_hex LIKE '{}'
-    			        ORDER BY report_epoch '''.format(mode_s)
 
-    cur.execute(sql)
+def get_records_to_assign_new_itinerary_id(mode_s):
     all_timestamps_per_mode_s_hex = [item for item in cur.fetchall()]
 
     i = 0
