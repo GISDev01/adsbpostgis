@@ -29,13 +29,12 @@ def get_unique_mode_s_without_itin_assigned():
     uniq_mode_s_cursor = dbconn.cursor()
 
     sql = '''
-    		SELECT aircraftreports.mode_s_hex
+    		SELECT DISTINCT aircraftreports.mode_s_hex
     			FROM aircraftreports 
-    			    WHERE aircraftreports.itinerary_id IS NULL
-    			        GROUP BY mode_s_hex'''
+    			    WHERE aircraftreports.itinerary_id IS NULL'''
     uniq_mode_s_cursor.execute(sql)
 
-    return [item for item in uniq_mode_s_cursor.fetchall()]
+    return [item[0] for item in uniq_mode_s_cursor.fetchall()]
 
 
 def assign_itinerary_id_for_mode_s(mode_s_hex_for_update):
@@ -60,3 +59,6 @@ def get_records_to_assign_new_itinerary_id(mode_s):
         # Skip the last record in the list
         if i == num_rows - 1:
             break
+
+
+get_unique_mode_s_without_itin_assigned()
