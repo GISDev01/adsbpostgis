@@ -26,7 +26,8 @@ from model import report_receiver
 
 import sqlalchemy
 from sqlalchemy import create_engine
-from sqlalchemy import Column, String
+from sqlalchemy import Column, String, Integer
+
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
@@ -80,32 +81,27 @@ class AircraftReport(Base):
     """
     __tablename__ = 'aircraftreportsSqlAlchTest'
 
-    id = Column(Integer, primary_key=True)
-    name = Column(String, nullable=False)
-    email = Column(String, nullable=False, unique=True)
-    nick = Column(String)
 
-    address_id = Column(Integer, ForeignKey('address.id'))
     # Set all of these initially outside the self/object scope as defaults, and then we set them properly within
     # the init, if they exist in the JSON that is being parsed within the object
-    mode_s_hex = None
+    mode_s_hex = Column(String)
     altitude = 0.0
     speed = 0.0
-    squawk = None
-    flight = None
+    squawk = Column(String)
+    flight = Column(String)
     track = 0
     lon = 0.0
     lat = 0.0
     vert_rate = 0.0
     seen = 9999999
-    valid_position = 1
-    valid_track = 1
+    valid_position = Column(Integer, default=1)
+    valid_track = Column(Integer, default=1)
     time = 0
-    reporter = None
+    reporter = Column(String)
     report_location = None
     is_metric = False
-    messages = 0
-    seen_pos = -1
+    messages = Column(Integer, default=0)
+    seen_pos = Column(Integer, default=-1)
     category = None
     is_anon = None
     is_ground = None
