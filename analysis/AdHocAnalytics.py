@@ -61,4 +61,20 @@ def get_records_to_assign_new_itinerary_id(mode_s):
             break
 
 
-get_unique_mode_s_without_itin_assigned()
+def calc_time_diff_for_mode_s(mode_s_hex):
+    uniq_mode_s_cursor = dbconn.cursor()
+
+    sql = '''SELECT aircraftreports.report_epoch - lag(aircraftreports.report_epoch) 
+                OVER (ORDER BY aircraftreports.report_epoch) 
+             AS time_delta_sec
+                FROM aircraftreports 
+                    WHERE aircraftreports.itinerary_id IS NULL AND aircraftreports.mode_s_hex = '{}'
+                        ORDER BY aircraftreports.report_epoch'''.format(mode_s_hex)
+
+    uniq_mode_s_cursor.execute(sql)
+
+    logger.info([item for item in uniq_mode_s_cursor.fetchall()])
+
+
+# get_unique_mode_s_without_itin_assigned()
+calc_time_diff_for_mode_s('ADAFB5')
