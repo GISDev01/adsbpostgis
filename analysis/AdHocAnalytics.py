@@ -25,7 +25,8 @@ dbconn = pg_utils.database_connection(dbname=db_name,
                                       dbpasswd=db_pwd)
 
 
-def get_unique_mode_s_without_itin_assigned():
+def get_all_unique_mode_s_without_itin_assigned():
+    logger.info('Fetching a list of all Mode S Idents missing itin ID.')
     uniq_mode_s_cursor = dbconn.cursor()
 
     sql = '''
@@ -38,6 +39,12 @@ def get_unique_mode_s_without_itin_assigned():
 
 
 def assign_itinerary_id_for_mode_s(mode_s_hex_for_update, itinerary_id, min_time, max_time):
+    logger.info(
+        'Assigning Itin ID {} for Mode S {} between {} and {}'.format(itinerary_id,
+                                                                      mode_s_hex_for_update,
+                                                                      min_time,
+                                                                      max_time))
+
     itinerary_cursor = dbconn.cursor()
 
     itinerary_cursor.execute("UPDATE aircraftreports "
