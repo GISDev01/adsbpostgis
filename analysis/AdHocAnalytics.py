@@ -19,7 +19,7 @@ db_name = config['database']['dbname']
 db_user = config['database']['user']
 db_pwd = config['database']['pwd']
 
-ITINERARY_MAX_TIME_DIFF_SECONDS = config['itinerarymaxtimediffseconds']
+ITINERARY_MAX_TIME_DIFF_SECONDS = int(config['itinerarymaxtimediffseconds'])
 
 dbconn = pg_utils.database_connection(dbname=db_name,
                                       dbhost=db_hostname,
@@ -40,25 +40,38 @@ def get_all_unique_mode_s_without_itin_assigned():
 
 
 def assign_itinerary_id_for_mode_s(mode_s_hex_for_update, itinerary_id, min_time, max_time):
+    min_timestamp = time.strftime('%Y/%m/%d %H:%M:%S', time.localtime(min_time))
+    max_timestamp = time.strftime('%Y/%m/%d %H:%M:%S', time.localtime(max_time))
+
     logger.info(
-        'Assigning Itin ID {} for Mode S {} between {} and {}'.format(itinerary_id,
-                                                                      mode_s_hex_for_update,
-                                                                      min_time,
-                                                                      max_time))
+        'Assigning Itinerary ID {} for Mode S {} between {} and {}'.format(itinerary_id,
+                                                                           mode_s_hex_for_update,
+                                                                           min_timestamp,
+                                                                           max_timestamp))
 
-    itinerary_cursor = dbconn.cursor()
-
-    itinerary_cursor.execute("UPDATE aircraftreports "
-                             "SET aircraftreports.itinerary_id='{0}' "
-                             "WHERE aircraftreports.mode_s_hex = '{1}' "
-                             "AND aircraftreports.report_epoch BETWEEN {2} AND {3} ".format(itinerary_id,
-                                                                                            mode_s_hex_for_update,
-                                                                                            min_time,
-                                                                                            max_time))
+    # itinerary_cursor = dbconn.cursor()
+    #
+    # itinerary_cursor.execute("UPDATE aircraftreports "
+    #                          "SET aircraftreports.itinerary_id='{0}' "
+    #                          "WHERE aircraftreports.mode_s_hex = '{1}' "
+    #                          "AND aircraftreports.report_epoch BETWEEN {2} AND {3} ".format(itinerary_id,
+    #                                                                                         mode_s_hex_for_update,
+    #                                                                                         min_time,
+    #                                                                                         max_time))
 
 
 def calc_time_diffs_for_mode_s(mode_s_hex):
-    logger.info('Calcing Time Diffs to assign itinery ids for mode s: {}'.format(mode_s_hex))
+    """
+    Given an input of a string mode_s_hex code, query the DB for all records with that mode_s_hex and loop through
+    the record in order of timestamp, comparing each pair of records to determine the amount of time between
+    each point. If the 2 points are far arapt, it is assumed that the aircraft landed and took back off.
+    Note: this doesn't assign an ID for all records (the most recent batch), because the DB could be in the
+    middle of an itinerary when this script is run.
+    :param mode_s_hex: the hex code identifying the aircraft
+    :type mode_s_hex: str
+    :return: None
+    """
+    logger.info('Calcing Time Diffs to assign itinerary ids for mode s: {}'.format(mode_s_hex))
     uniq_mode_s_cursor = dbconn.cursor()
 
     sql = '''SELECT aircraftreports.report_epoch, aircraftreports.report_epoch - lag(aircraftreports.report_epoch)
@@ -72,7 +85,7 @@ def calc_time_diffs_for_mode_s(mode_s_hex):
 
     count = 0
     for time_diff_tuple in uniq_mode_s_cursor.fetchall():
-        logger.debug('Time Diff: {}'.format(time_diff_tuple))
+        logger.info('Time Diff: {}'.format(time_diff_tuple))
         curr_timestamp = time_diff_tuple[0]
 
         # Time difference between the current record and the previous record
@@ -80,6 +93,8 @@ def calc_time_diffs_for_mode_s(mode_s_hex):
 
         if count == 0:
             minimum_timestamp = time_diff_tuple[0]
+            count += 1
+            continue
 
         if time_diff_sec > ITINERARY_MAX_TIME_DIFF_SECONDS:
             maximum_timestamp = curr_timestamp
@@ -93,7 +108,7 @@ def calc_time_diffs_for_mode_s(mode_s_hex):
 
 
 def generate_itinerary_id(mode_s, epoch_timestamp):
-    timestamp = time.strftime('%Y_%m_%d_%H_%M_%S', time.localtime(epoch_timestamp / 1000.))
+    timestamp = time.strftime('%Y_%m_%d_%H_%M_%S', time.localtime(epoch_timestamp))
     itineraryid = timestamp + '_{}'.format(mode_s)
     logger.info('Itinerary ID Generated: {}'.format(itineraryid))
     return itineraryid
