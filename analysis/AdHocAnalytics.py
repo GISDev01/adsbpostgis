@@ -37,12 +37,16 @@ def get_unique_mode_s_without_itin_assigned():
     return [item[0] for item in uniq_mode_s_cursor.fetchall()]
 
 
-def assign_itinerary_id_for_mode_s(mode_s_hex_for_update):
-    cur = dbconn.cursor()
-    itinerary_id = 'TEST1'
-    cur.execute("UPDATE aircraftreports "
-                "SET aircraftreports.itinerary_id='{0}' "
-                "WHERE aircraftreports.mode_s_hex = '{1}'".format(itinerary_id, mode_s_hex_for_update))
+def assign_itinerary_id_for_mode_s(mode_s_hex_for_update, itinerary_id, min_time, max_time):
+    itinerary_cursor = dbconn.cursor()
+
+    itinerary_cursor.execute("UPDATE aircraftreports "
+                             "SET aircraftreports.itinerary_id='{0}' "
+                             "WHERE aircraftreports.mode_s_hex = '{1}' "
+                             "AND aircraftreports.report_epoch BETWEEN {2} AND {3} ".format(itinerary_id,
+                                                                                            mode_s_hex_for_update,
+                                                                                            min_time,
+                                                                                            max_time))
 
 
 def get_records_to_assign_new_itinerary_id(mode_s):
@@ -64,16 +68,17 @@ def get_records_to_assign_new_itinerary_id(mode_s):
 def calc_time_diff_for_mode_s(mode_s_hex):
     uniq_mode_s_cursor = dbconn.cursor()
 
-    sql = '''SELECT aircraftreports.report_epoch - lag(aircraftreports.report_epoch) 
+    sql = '''SELECT aircraftreports.report_epoch, aircraftreports.report_epoch - lag(aircraftreports.report_epoch)
                 OVER (ORDER BY aircraftreports.report_epoch) 
-             AS time_delta_sec
-                FROM aircraftreports 
-                    WHERE aircraftreports.itinerary_id IS NULL AND aircraftreports.mode_s_hex = '{}'
-                        ORDER BY aircraftreports.report_epoch'''.format(mode_s_hex)
+                  AS time_delta_sec
+             FROM aircraftreports 
+              WHERE aircraftreports.itinerary_id IS NULL AND aircraftreports.mode_s_hex = '{}'
+                    ORDER BY aircraftreports.report_epoch'''.format(mode_s_hex)
 
     uniq_mode_s_cursor.execute(sql)
 
-    logger.info([item for item in uniq_mode_s_cursor.fetchall()])
+    for time_diff_tuple in uniq_mode_s_cursor.fetchall():
+        logger.info(time_diff_tuple)
 
 
 # get_unique_mode_s_without_itin_assigned()
