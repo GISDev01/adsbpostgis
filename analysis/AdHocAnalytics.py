@@ -1,7 +1,7 @@
 import logging
+import time
 
 import yaml
-import time
 
 from utils import postgres as pg_utils
 
@@ -20,7 +20,6 @@ db_user = config['database']['user']
 db_pwd = config['database']['pwd']
 
 ITINERARY_MAX_TIME_DIFF_SECONDS = config['itinerarymaxtimediffseconds']
-
 
 dbconn = pg_utils.database_connection(dbname=db_name,
                                       dbhost=db_hostname,
@@ -82,18 +81,21 @@ def calc_time_diffs_for_mode_s(mode_s_hex):
             minimum_timestamp = time_diff_tuple[0]
 
         if time_diff_sec > ITINERARY_MAX_TIME_DIFF_SECONDS:
-
-            assign_itinerary_id_for_mode_s(itinerary_id=,
-                                           mode_s_hex_for_update=,
-                                           min_time=,
-                                           max_time=)
+            maximum_timestamp = curr_timestamp
+            assign_itinerary_id_for_mode_s(itinerary_id=generate_itinerary_id(mode_s_hex, minimum_timestamp),
+                                           mode_s_hex_for_update=mode_s_hex,
+                                           min_time=minimum_timestamp,
+                                           max_time=maximum_timestamp)
             count = 0
         else:
             count += 1
 
-def generate_itinerary_id(epoch_timestamp):
-    time.strftime('%m/%d/%Y %H:%M:%S', time.gmtime(1346114717972 / 1000.))
+
+def generate_itinerary_id(mode_s, epoch_timestamp):
+    timestamp = time.strftime('%Y_%m_%d_%H_%M_%S', time.localtime(epoch_timestamp / 1000.))
+    return timestamp + '_{}'.format(mode_s)
 
 
 # get_unique_mode_s_without_itin_assigned()
-calc_time_diffs_for_mode_s('ADAFB5')
+# calc_time_diffs_for_mode_s('ADAFB5')
+generate_itinerary_id('ADAFB5', 1510339712000)
