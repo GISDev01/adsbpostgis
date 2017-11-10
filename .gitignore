@@ -6,6 +6,7 @@ config.yml
 /externaldata/adsbedata/rawdata
 /externaldata/adsbedata/output
 /externaldata/adsbedata/ingested
+/externaldata/airports/data
 
 
 

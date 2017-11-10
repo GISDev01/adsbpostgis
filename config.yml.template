@@ -21,3 +21,4 @@ database:
 
 waittimesec: 5
 samplescutoff: 100000000
+itinerarymaxtimediffseconds: 900
