@@ -73,11 +73,14 @@ BEGIN
       fullSegment = ST_Makeline(fullSegment, currentSubsegment.geom);
     END IF;
 
-    -- ST_BuildArea will only return true if the full line segment is noded and closed
-    patternPoly = ST_BuildArea(ST_Node(ST_Force2D(fullSegment)));
+    -- Only try to check for the pattern poly if we've built a segment of at least 50 points
+    IF ST_Numpoints(fullSegment) > 50
+    THEN
+      -- ST_BuildArea will only return true if the full line segment is noded and closed
+      patternPoly = ST_BuildArea(ST_Node(ST_Force2D(fullSegment)));
+    END IF;
 
-
-    IF patternPoly IS NOT NULL AND ST_Numpoints(fullSegment) > 10
+    IF patternPoly IS NOT NULL
     THEN
       -- we found the pattern that we're checking for as we iterate through the points
       numPatternsDetected:=numPatternsDetected + 1;

@@ -1,5 +1,6 @@
 import logging
 import time
+import ppygis3
 
 import yaml
 
@@ -28,15 +29,7 @@ dbconn = pg_utils.database_connection(dbname=db_name,
 
 
 def placeholder(mode_s_hex_for_update, itinerary_id, min_time, max_time):
-    min_timestamp = time.strftime('%Y/%m/%d %H:%M:%S', time.localtime(min_time))
-    max_timestamp = time.strftime('%Y/%m/%d %H:%M:%S', time.localtime(max_time))
-
-    logger.info(
-        'Assigning Itinerary ID {} for Mode S {} between {} and {}'.format(itinerary_id,
-                                                                           mode_s_hex_for_update,
-                                                                           min_timestamp,
-                                                                           max_timestamp))
-
+    pass
     # itinerary_cursor = dbconn.cursor()
     #
     # itinerary_cursor.execute("UPDATE aircraftreports "
@@ -51,9 +44,25 @@ def placeholder(mode_s_hex_for_update, itinerary_id, min_time, max_time):
 def find_patterns_within_itinerary(mode_s_hex):
     pattern_cursor = dbconn.cursor()
 
-    sql = '''SELECT * FROM find_pattern_num('A8D33A');'''.format(mode_s_hex)
+    sql = "SELECT * FROM find_pattern_num('A8D33A');".format(mode_s_hex)
 
     pattern_cursor.execute(sql)
 
+    # patternnumber    INT,
+    # patterngeometry GEOMETRY,
+    # patternstartend GEOMETRY,
+    # patterncentroid GEOMETRY
+
     for record in pattern_cursor.fetchall():
-        logger.info('Pattern Result: {}'.format(record))
+        # Get coords of the centroid
+        print(ppygis3.Geometry.read_ewkb(record[3]))
+
+        #print(record)
+        #logger.info('Pattern Result: {}'.format(ppygis3.Point(record[3])))
+        #for field in record:
+
+        print(ppygis3.Geometry.read_ewkb(record[3]))
+        # logger.info('Pattern Result: {}'.format(LineString(record[2])))
+
+
+find_patterns_within_itinerary('')
