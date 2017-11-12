@@ -5,7 +5,8 @@ CREATE FUNCTION adsb.public.find_pattern_num(
   OUT patternnumber   INT,
   OUT patterngeometry GEOMETRY,
   OUT patternstartend GEOMETRY,
-  OUT patterncentroid GEOMETRY
+  OUT patterncentroid GEOMETRY,
+  OUT NUMVERTICES     INT
 )
   RETURNS SETOF RECORD AS
 $BODY$
@@ -100,6 +101,7 @@ BEGIN
       PATTERNGEOMETRY := patternPoly;
       PATTERNSTARTEND := intersectPtOnFullSegment;
       PATTERNCENTROID := patternPolyCentroid;
+      NUMVERTICES     := ST_Numpoints(fullSegment);
 
       RETURN NEXT;
     END IF;
