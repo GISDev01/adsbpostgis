@@ -27,6 +27,7 @@ DECLARE
   patternPoly              GEOMETRY = NULL;
   intersectPtOnFullSegment GEOMETRY = NULL;
   patternPolyCentroid      GEOMETRY = NULL;
+  numVertices              INTEGER := 0;
   numPatternsDetected      INTEGER := 0;
 BEGIN
   FOR currentSubsegment IN
@@ -79,31 +80,32 @@ BEGIN
     THEN
       -- ST_BuildArea will only return true if the full line segment is noded and closed
       patternPoly = ST_BuildArea(ST_Node(ST_Force2D(fullSegment)));
-    END IF;
 
-    IF patternPoly IS NOT NULL
-    THEN
-      -- we found the pattern that we're checking for as we iterate through the points
-      numPatternsDetected:=numPatternsDetected + 1;
+      IF patternPoly IS NOT NULL
+      THEN
+        -- we found the pattern that we're checking for as we iterate through the points
+        numPatternsDetected:=numPatternsDetected + 1;
 
-      -- get the intersection point (start/end) along the full segment when it self-intersected
-      intersectPtOnFullSegment = ST_Intersection(fullSegment :: GEOMETRY, currentSubsegment.geom :: GEOMETRY);
+        -- get the intersection point (start/end) along the full segment when it self-intersected
+        intersectPtOnFullSegment = ST_Intersection(fullSegment :: GEOMETRY, currentSubsegment.geom :: GEOMETRY);
 
-      -- get the centroid of the pattern that is detected
-      patternPolyCentroid = ST_Centroid(patternPoly);
+        -- get the centroid of the pattern that is detected
+        patternPolyCentroid = ST_Centroid(patternPoly);
 
-      RAISE NOTICE 'patternPolyCentroid: %, %', ST_X(patternPolyCentroid), ST_Y(patternPolyCentroid);
+        RAISE NOTICE 'patternPolyCentroid: %, %', ST_X(patternPolyCentroid), ST_Y(patternPolyCentroid);
 
-      -- reset the full segment and start building a new full line segment with the next point in line
-      fullSegment = NULL;
+        numVertices = ST_Numpoints(fullSegment);
+        -- reset the full segment and start building a new full line segment with the next point in line
+        fullSegment = NULL;
 
-      PATTERNNUMBER   := numPatternsDetected;
-      PATTERNGEOMETRY := patternPoly;
-      PATTERNSTARTEND := intersectPtOnFullSegment;
-      PATTERNCENTROID := patternPolyCentroid;
-      NUMVERTICES     := ST_Numpoints(fullSegment);
+        PATTERNNUMBER   := numPatternsDetected;
+        PATTERNGEOMETRY := patternPoly;
+        PATTERNSTARTEND := intersectPtOnFullSegment;
+        PATTERNCENTROID := patternPolyCentroid;
+        NUMVERTICES     := numVertices;
 
-      RETURN NEXT;
+        RETURN NEXT;
+      END IF;
     END IF;
 
     -- keep track of previous point processed
