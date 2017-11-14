@@ -29,11 +29,16 @@ dbconn = pg_utils.database_connection(dbname=db_name,
 
 
 def get_all_unique_mode_s_without_itin_assigned():
+    """
+    :return: list of Mode S Hex IDs that need to get at least 1 itinerary ID assigned
+    """
     logger.info('Fetching a list of all Mode S Idents missing itin ID.')
     uniq_mode_s_cursor = dbconn.cursor()
 
-    sql = '''SELECT DISTINCT aircraftreports.mode_s_hex FROM aircraftreports 
-              WHERE aircraftreports.itinerary_id IS NULL'''
+    sql = '''SELECT 
+              DISTINCT aircraftreports.mode_s_hex 
+                FROM aircraftreports 
+                  WHERE aircraftreports.itinerary_id IS NULL'''
     uniq_mode_s_cursor.execute(sql)
 
     return [record[0] for record in uniq_mode_s_cursor.fetchall()]
@@ -67,6 +72,7 @@ def calc_time_diffs_for_mode_s(mode_s_hex):
     each point. If the 2 points are far arapt, it is assumed that the aircraft landed and took back off.
     Note: this doesn't assign an ID for all records (the most recent batch), because the DB could be in the
     middle of an itinerary when this script is run.
+
     :param mode_s_hex: the hex code identifying the aircraft
     :type mode_s_hex: str
     :return: None
@@ -114,5 +120,6 @@ def generate_itinerary_id(mode_s, epoch_timestamp):
     return itineraryid
 
 
-# get_unique_mode_s_without_itin_assigned()
+mode_s_list_to_process = get_all_unique_mode_s_without_itin_assigned()
+
 calc_time_diffs_for_mode_s('ADAFB5')

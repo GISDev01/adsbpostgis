@@ -1,5 +1,5 @@
 SELECT *
-FROM find_pattern_num('A8D33A');
+FROM find_pattern_num('ADAFB5');
 -- A8D33A, ADAFB5
 
 SELECT *

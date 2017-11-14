@@ -1,12 +1,12 @@
-DROP FUNCTION adsb.public.find_pattern_num(modeshex CHAR );
+DROP FUNCTION adsb.public.find_pattern_num(itineraryid CHAR );
 
 CREATE FUNCTION adsb.public.find_pattern_num(
-  IN  modeshex        CHAR,
-  OUT patternnumber   INT,
-  OUT patterngeometry GEOMETRY,
-  OUT patternstartend GEOMETRY,
-  OUT patterncentroid GEOMETRY,
-  OUT NUMVERTICES     INT
+  IN  itineraryid             CHAR,
+  OUT patternnumber           INT,
+  OUT patterngeometry         GEOMETRY,
+  OUT patternstartend         GEOMETRY,
+  OUT patterncentroid         GEOMETRY,
+  OUT patternnumvertices      INT
 )
   RETURNS SETOF RECORD AS
 $BODY$
@@ -40,7 +40,7 @@ BEGIN
           OVER (
             ORDER BY report_epoch )   AS rownum
         FROM adsb.public.aircraftreports
-        WHERE mode_s_hex = modeshex)
+        WHERE itinerary_id = itineraryid)
 
   SELECT
     ST_AsText(ST_MakeLine(ARRAY [a.geom, b.geom])) AS geom,
@@ -94,15 +94,15 @@ BEGIN
 
         RAISE NOTICE 'patternPolyCentroid: %, %', ST_X(patternPolyCentroid), ST_Y(patternPolyCentroid);
 
-        numVertices = ST_Numpoints(fullSegment);
+        numVertices := ST_Numpoints(fullSegment);
         -- reset the full segment and start building a new full line segment with the next point in line
         fullSegment = NULL;
 
-        PATTERNNUMBER   := numPatternsDetected;
-        PATTERNGEOMETRY := patternPoly;
-        PATTERNSTARTEND := intersectPtOnFullSegment;
-        PATTERNCENTROID := patternPolyCentroid;
-        NUMVERTICES     := numVertices;
+        PATTERNNUMBER           := numPatternsDetected;
+        PATTERNGEOMETRY         := patternPoly;
+        PATTERNSTARTEND         := intersectPtOnFullSegment;
+        PATTERNCENTROID         := patternPolyCentroid;
+        PATTERNNUMVERTICES      := numVertices;
 
         RETURN NEXT;
       END IF;
