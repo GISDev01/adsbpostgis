@@ -91,7 +91,7 @@ def calc_time_diffs_for_mode_s(mode_s_hex):
 
     count = 0
     for time_diff_tuple in uniq_mode_s_cursor.fetchall():
-        logger.info('Time Diff: {}'.format(time_diff_tuple))
+        # logger.info('Time Diff: {}'.format(time_diff_tuple))
         curr_timestamp = time_diff_tuple[0]
 
         # Time difference between the current record and the previous record
@@ -121,5 +121,6 @@ def generate_itinerary_id(mode_s, epoch_timestamp):
 
 
 mode_s_list_to_process = get_all_unique_mode_s_without_itin_assigned()
-
-calc_time_diffs_for_mode_s('ADAFB5')
+for mode_s in mode_s_list_to_process:
+    logger.info('Calcing Itinerary IDs for Mode S: {}'.format(mode_s))
+    calc_time_diffs_for_mode_s(mode_s)
