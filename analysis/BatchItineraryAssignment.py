@@ -54,15 +54,15 @@ def assign_itinerary_id_for_mode_s(mode_s_hex_for_update, itinerary_id, min_time
                                                                            min_timestamp,
                                                                            max_timestamp))
 
-    # itinerary_cursor = dbconn.cursor()
-    #
-    # itinerary_cursor.execute("UPDATE aircraftreports "
-    #                          "SET aircraftreports.itinerary_id='{0}' "
-    #                          "WHERE aircraftreports.mode_s_hex = '{1}' "
-    #                          "AND aircraftreports.report_epoch BETWEEN {2} AND {3} ".format(itinerary_id,
-    #                                                                                         mode_s_hex_for_update,
-    #                                                                                         min_time,
-    #                                                                                         max_time))
+    itinerary_cursor = dbconn.cursor()
+
+    itinerary_cursor.execute("UPDATE aircraftreports "
+                             "SET itinerary_id='{0}' "
+                             "WHERE mode_s_hex = '{1}' "
+                             "AND report_epoch BETWEEN {2} AND {3} ".format(itinerary_id,
+                                                                            mode_s_hex_for_update,
+                                                                            min_time,
+                                                                            max_time))
 
 
 def calc_time_diffs_for_mode_s(mode_s_hex):
@@ -116,7 +116,7 @@ def calc_time_diffs_for_mode_s(mode_s_hex):
 def generate_itinerary_id(mode_s, epoch_timestamp):
     timestamp = time.strftime('%Y_%m_%d_%H_%M_%S', time.localtime(epoch_timestamp))
     itineraryid = timestamp + '_{}'.format(mode_s)
-    logger.info('Itinerary ID Generated: {}'.format(itineraryid))
+    # logger.info('Itinerary ID Generated: {}'.format(itineraryid))
     return itineraryid
 
 
@@ -127,4 +127,3 @@ for mode_s in mode_s_list_to_process:
     count += 1
     logger.info('Calcing Itinerary IDs for Mode S: {} - Progress: {}/{}'.format(mode_s, count, num_to_process))
     calc_time_diffs_for_mode_s(mode_s)
-

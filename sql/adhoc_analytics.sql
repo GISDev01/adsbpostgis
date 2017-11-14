@@ -1,5 +1,5 @@
 SELECT *
-FROM find_pattern_num('ADAFB5');
+FROM find_pattern_num('2017_10_25_20_33_26_84B982');
 -- A8D33A, ADAFB5
 
 SELECT *
