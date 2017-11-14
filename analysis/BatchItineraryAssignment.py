@@ -121,6 +121,10 @@ def generate_itinerary_id(mode_s, epoch_timestamp):
 
 
 mode_s_list_to_process = get_all_unique_mode_s_without_itin_assigned()
+num_to_process = len(mode_s_list_to_process)
+count = 0
 for mode_s in mode_s_list_to_process:
-    logger.info('Calcing Itinerary IDs for Mode S: {}'.format(mode_s))
+    count += 1
+    logger.info('Calcing Itinerary IDs for Mode S: {} - Progress: {}/{}'.format(mode_s, count, num_to_process))
     calc_time_diffs_for_mode_s(mode_s)
+
