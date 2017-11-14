@@ -53,16 +53,22 @@ def assign_itinerary_id_for_mode_s(mode_s_hex_for_update, itinerary_id, min_time
                                                                            mode_s_hex_for_update,
                                                                            min_timestamp,
                                                                            max_timestamp))
+    logger.debug(
+        'Between {} and {}'.format(min_time, max_time))
 
     itinerary_cursor = dbconn.cursor()
 
-    itinerary_cursor.execute("UPDATE aircraftreports "
-                             "SET itinerary_id='{0}' "
-                             "WHERE mode_s_hex = '{1}' "
-                             "AND report_epoch BETWEEN {2} AND {3} ".format(itinerary_id,
-                                                                            mode_s_hex_for_update,
-                                                                            min_time,
-                                                                            max_time))
+    sql = "UPDATE aircraftreports SET itinerary_id = '{0}' WHERE aircraftreports.mode_s_hex = '{1}' " \
+          "AND aircraftreports.report_epoch BETWEEN {2} AND {3} ".format(itinerary_id,
+                                                                         mode_s_hex_for_update,
+                                                                         min_time,
+                                                                         max_time)
+    logger.debug(sql)
+
+    itinerary_cursor.execute(sql)
+
+    dbconn.commit()
+    itinerary_cursor.close()
 
 
 def calc_time_diffs_for_mode_s(mode_s_hex):
