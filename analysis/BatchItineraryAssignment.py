@@ -30,9 +30,12 @@ dbconn = pg_utils.database_connection(dbname=db_name,
 
 def get_all_unique_mode_s_without_itin_assigned():
     """
-    :return: list of Mode S Hex IDs that need to get at least 1 itinerary ID assigned
+    Queries the database to find all of the unqiue mode_s_hex codes that have at least 1 record without an itinerary ID
+    assigned (null)
+
+    :return: list of Mode S Hex IDs (strings) that have at least 1 record without an itinerary ID assigned
     """
-    logger.info('Fetching a list of all Mode S Idents missing itin ID.')
+    logger.info('Fetching a list of all Mode-s hex codes that are missing at least 1 itinerary ID.')
     uniq_mode_s_cursor = dbconn.cursor()
 
     sql = '''SELECT 
@@ -45,11 +48,20 @@ def get_all_unique_mode_s_without_itin_assigned():
 
 
 def assign_itinerary_id_for_mode_s(mode_s_hex_for_update, itinerary_id, min_time, max_time):
+    """
+    Given a mode s hex code, itinerary id, and 2 epoch timestamps, assign the itinerary ID to the appropriate rows
+
+    :param mode_s_hex_for_update: Mode-s hex code (str)
+    :param itinerary_id: itinerary ID (str)
+    :param min_time: epoch timestamp, minimum timestamp
+    :param max_time: epoch timestamp, maximum timestamp
+
+    """
     min_timestamp = time.strftime('%Y/%m/%d %H:%M:%S', time.localtime(min_time))
     max_timestamp = time.strftime('%Y/%m/%d %H:%M:%S', time.localtime(max_time))
 
     logger.info(
-        'Assigning Itinerary ID {} for Mode S {} between {} and {}'.format(itinerary_id,
+        'Assigning Itinerary ID {} for Mode S {} between times {} and {}'.format(itinerary_id,
                                                                            mode_s_hex_for_update,
                                                                            min_timestamp,
                                                                            max_timestamp))
@@ -63,10 +75,11 @@ def assign_itinerary_id_for_mode_s(mode_s_hex_for_update, itinerary_id, min_time
                                                                          mode_s_hex_for_update,
                                                                          min_time,
                                                                          max_time)
-    logger.debug(sql)
+    logger.debug('Assigning Itinerary ID with sql: {}'.format(sql))
 
     itinerary_cursor.execute(sql)
 
+    # commit the query for each of the itinerary assignments as we loop through them
     dbconn.commit()
     itinerary_cursor.close()
 
@@ -81,8 +94,9 @@ def calc_time_diffs_for_mode_s(mode_s_hex):
 
     :param mode_s_hex: the hex code identifying the aircraft
     :type mode_s_hex: str
-    :return: None
+
     """
+
     logger.info('Calcing Time Diffs to assign itinerary ids for mode s: {}'.format(mode_s_hex))
     uniq_mode_s_cursor = dbconn.cursor()
 
@@ -97,7 +111,6 @@ def calc_time_diffs_for_mode_s(mode_s_hex):
 
     count = 0
     for time_diff_tuple in uniq_mode_s_cursor.fetchall():
-        # logger.info('Time Diff: {}'.format(time_diff_tuple))
         curr_timestamp = time_diff_tuple[0]
 
         # Time difference between the current record and the previous record
@@ -120,16 +133,31 @@ def calc_time_diffs_for_mode_s(mode_s_hex):
 
 
 def generate_itinerary_id(mode_s, epoch_timestamp):
+    """
+    Using the mode-s hex code and the minimum epoch timestamp, create a new string that will be used as the
+    unique itinerary ID
+
+    :param mode_s: mode-s hex code
+    :type mode_s: str
+    :param epoch_timestamp: minimum timestamp that starts the itinerary
+    :type epoch_timestamp: int
+    :return: the itinerary ID (str)
+
+    """
+
     timestamp = time.strftime('%Y_%m_%d_%H_%M_%S', time.localtime(epoch_timestamp))
-    itineraryid = timestamp + '_{}'.format(mode_s)
-    # logger.info('Itinerary ID Generated: {}'.format(itineraryid))
-    return itineraryid
+    itinerary_id_generated = timestamp + '_{}'.format(mode_s)
+
+    return itinerary_id_generated
 
 
 mode_s_list_to_process = get_all_unique_mode_s_without_itin_assigned()
+
 num_to_process = len(mode_s_list_to_process)
-count = 0
+
+mode_s_count = 0
+
 for mode_s in mode_s_list_to_process:
-    count += 1
-    logger.info('Calcing Itinerary IDs for Mode S: {} - Progress: {}/{}'.format(mode_s, count, num_to_process))
+    mode_s_count += 1
+    logger.info('Calcing Itinerary IDs for Mode S: {} - Progress: {}/{}'.format(mode_s, mode_s_count, num_to_process))
     calc_time_diffs_for_mode_s(mode_s)
