@@ -55,9 +55,16 @@ def get_list_of_datestamps_inclusive(start_date, end_date):
 
 local_config = get_config()
 archive_base_url = local_config['archive_base_url']
+minlat83 = local_config['archiveboundingbox']['minlat83']
+maxlat83 = local_config['archiveboundingbox']['maxlat83']
+minlong83 = local_config['archiveboundingbox']['minlong83']
+maxlong83 = local_config['archiveboundingbox']['maxlong83']
 
-start_date = '2017-10-26'
-end_date = '2017-10-26'
+start_date = local_config['startdate']
+end_date = local_config['enddate']
+
+start_date = '2018-02-01'
+end_date = '2018-02-14'
 
 datestamps_list = get_list_of_datestamps_inclusive(start_date, end_date)
 
