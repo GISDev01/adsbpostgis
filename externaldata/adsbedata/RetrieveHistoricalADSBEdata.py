@@ -3,13 +3,15 @@ Utilities for downloading historical data in a given AOI.
 Python 3.5
 """
 
-import requests
-import io
-import zipfile
-import os
 import datetime
+import io
 import logging
+import os
+import zipfile
+
+import requests
 import yaml
+
 from model import aircraft_report
 
 logger = logging.getLogger(__name__)
@@ -37,7 +39,11 @@ def get_and_load_archive_data_by_date(zip_url, zip_filename):
     else:
         logger.warning('Skipping this zip URL - it''s already been downloaded and extracted.')
 
-    aircraft_report.get_aircraft_data_from_files(os.path.join(zip_dir, extract_dir))
+    aircraft_report.get_aircraft_data_from_files(os.path.join(zip_dir, extract_dir),
+                                                 minlat83=minlat83,
+                                                 maxlat83=maxlat83,
+                                                 minlong83=minlong83,
+                                                 maxlong83=maxlong83)
 
 
 def get_list_of_datestamps_inclusive(start_date, end_date):

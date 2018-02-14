@@ -276,7 +276,7 @@ def get_aircraft_data_from_url(url_string, url_params=None):
     return reports_list
 
 
-def get_aircraft_data_from_files(file_directory):
+def get_aircraft_data_from_files(file_directory, **kwargs):
     """
     Sample record:
     Args:
