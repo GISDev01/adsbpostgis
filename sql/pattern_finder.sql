@@ -1,5 +1,8 @@
 DROP FUNCTION adsb.public.find_pattern_num(itineraryid CHAR );
 
+-- Example usage: pass in the ID of the itinerary to check for patterns in the point data
+--   SELECT * FROM find_pattern_count(itineraryid);
+
 CREATE FUNCTION adsb.public.find_pattern_num(
   IN  itineraryid             CHAR,
   OUT patternnumber           INT,
@@ -11,13 +14,13 @@ CREATE FUNCTION adsb.public.find_pattern_num(
   RETURNS SETOF RECORD AS
 $BODY$
 
--- Iterate through the points for this specific mode_s_hex_code, building a line as we go
--- we build the line using subsegments that are created between every pair of neighboring points
--- If the line creates a pattern then we count a it and start over building a new line
---     add the intersection point to the returning recordset
---     add the centroid of the pattern to the resulting recordset
--- pass in the ID of the mode s that we want to calc its patterns
---   SELECT * FROM find_pattern_count(mode_s);
+-- Iterate through all of the points for this specific mode_s_hex_code, building a line as we go.
+-- The line is built using subsegments that are created between every pair of neighboring points.
+-- If the line creates a pattern then we count it and start over building a new line from the next point
+
+-- Each time a pattern is detected, 2 points are calculated and stored:
+--     The intersection point at which the last point of the segment hit the line of the pattern.
+--     The centroid of the pattern.
 
 
 DECLARE
@@ -48,7 +51,8 @@ BEGIN
     b.rownum
   FROM pts AS a,
     pts AS b
-  -- Work-around to get the current point and the next point in order, since rownum sorted by timestamp
+  -- Work-around to get the current point and the next point in the correct order,
+  -- since rownum sorted by timestamp
   WHERE a.rownum = b.rownum - 1
         AND
         b.rownum > 1
@@ -57,7 +61,7 @@ BEGIN
   LOOP
     RAISE NOTICE 'Current 2-pt sub-segment: %', currentSubsegment;
 
-    -- if this is the start of a new full segment
+    -- If this is the start of a new full segment
     -- then start the full segment, otherwise add the point to the existing full segment
     IF fullSegment IS NULL
     THEN
@@ -79,6 +83,7 @@ BEGIN
     IF ST_Numpoints(fullSegment) > 50
     THEN
       -- ST_BuildArea will only return true if the full line segment is noded and closed
+      -- Force 2D to remove the elevation (Z-) component during this pattern check
       patternPoly = ST_BuildArea(ST_Node(ST_Force2D(fullSegment)));
 
       IF patternPoly IS NOT NULL
