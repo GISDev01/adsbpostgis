@@ -120,24 +120,27 @@ def calc_time_diffs_for_mode_s(mode_s_hex):
     count = 0
     for time_diff_tuple in uniq_mode_s_cursor.fetchall():
         curr_timestamp = time_diff_tuple[0]
-        logger.info('Current timestamp: {}'.format(time.strftime('%Y/%m/%d %H:%M:%S', time.localtime(curr_timestamp))))
+        #logger.info('Current timestamp: {}'.format(time.strftime('%Y/%m/%d %H:%M:%S', time.localtime(curr_timestamp))))
         # time.sleep(0.1)
         # Time difference between the current record and the previous record
         time_diff_sec = time_diff_tuple[1]
 
         if count == 0:
-            minimum_timestamp = time_diff_tuple[0]
+            minimum_timestamp = curr_timestamp
             count += 1
             continue
 
         if time_diff_sec > ITINERARY_MAX_TIME_DIFF_SECONDS:
+            # Dynamically figure out what the previous timestamp was, so use it as the end of the itinerary
+            # This effectively removes the current timestamp from being used in any calculations, which is ok for
+            # this use-case
             maximum_timestamp = curr_timestamp - time_diff_sec
 
             assign_itinerary_id_for_mode_s(itinerary_id=generate_itinerary_id(mode_s_hex, minimum_timestamp),
                                            mode_s_hex_for_update=mode_s_hex,
                                            min_time=minimum_timestamp,
                                            max_time=maximum_timestamp)
-            time.sleep(10)
+            # time.sleep(10)
             count = 0
         else:
             count += 1
@@ -170,7 +173,7 @@ mode_s_count = 0
 
 for mode_s in mode_s_list_to_process:
     mode_s_count += 1
-    logger.info('Calcing Itinerary IDs for Mode S: {} - Progress: {} Processed /{} Total Mode S IDs'.format(mode_s,
+    logger.info('Calcing Itinerary IDs for Mode S: {} - Progress on whole dataset (Processed/Total): {}/{} Mode S IDs'.format(mode_s,
                                                                                                             mode_s_count,
                                                                                                             num_to_process))
     calc_time_diffs_for_mode_s(mode_s)
