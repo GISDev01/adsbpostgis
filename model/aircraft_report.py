@@ -276,7 +276,7 @@ def get_aircraft_data_from_url(url_string, url_params=None):
     return reports_list
 
 
-def get_aircraft_data_from_files(file_directory, **kwargs):
+def get_aircraft_data_from_files(file_directory, minlat83, maxlat83, minlong83, maxlong83):
     """
     Sample record:
     Args:
@@ -304,7 +304,7 @@ def get_aircraft_data_from_files(file_directory, **kwargs):
         aircraft_report_list = []
         try:
             file_data = json.load(open(json_file, encoding='utf-8'))
-            logger.info('Success parsing JSON data file: {}'.format(json_file))
+            logger.info('Success AR parsing JSON data file: {}'.format(json_file))
 
         except:
             # temp workaround to fix malformed JSON in archive files - replace common strin
@@ -381,14 +381,17 @@ def get_aircraft_data_from_files(file_directory, **kwargs):
                                 speed = past_track[(past_track_reading_index * 4) + 3]
                             lat83 = past_track[(past_track_reading_index * 4) + 0]
                             long83 = past_track[(past_track_reading_index * 4) + 1]
-                            if lat83 < -90.0 or lat83 > 90.0 or long83 < -180.0 or long83 > 180.0:
-                                logger.error('Invalid lat/long detected within a trail: {}, {}'.format(lat83, long83))
+                            # if lat83 < -90.0 or lat83 > 90.0 or long83 < -180.0 or long83 > 180.0:
+                            if lat83 < minlat83 or lat83 > maxlat83 or long83 < minlong83 or long83 > maxlong83:
+                                #logger.error('Invalid lat/long detected within a trail: {}, {}'.format(lat83, long83))
+                                # skip this record
                                 continue
 
                             # converting millis to seconds
                             report_time = past_track[(past_track_reading_index * 4) + 2] / 1000
 
                             seen = seen_pos = 0
+
                             record = AircraftReport(hex=mode_s_hex,
                                                     time=report_time,
                                                     speed=speed,
@@ -423,7 +426,7 @@ def get_aircraft_data_from_files(file_directory, **kwargs):
                                            radio_receiver=radio_receiver_vrs,
                                            dbconn=main.postgres_db_connection)
 
-        destination = 'ingested'
+        destination = 'F:\ingested'
         if not os.path.exists(destination):
             os.makedirs(destination)
         shutil.copy(json_file, destination)
