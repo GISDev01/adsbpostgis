@@ -60,13 +60,19 @@ def assign_itinerary_id_for_mode_s(mode_s_hex_for_update, itinerary_id, min_time
     min_timestamp = time.strftime('%Y/%m/%d %H:%M:%S', time.localtime(min_time))
     max_timestamp = time.strftime('%Y/%m/%d %H:%M:%S', time.localtime(max_time))
 
+    diff_seconds = max_time - min_time
+    min, sec = divmod(diff_seconds, 60)
+    hr, min = divmod(min, 60)
+
     logger.info(
-        'Assigning Itinerary ID {} for Mode S {} between times {} and {}'.format(itinerary_id,
-                                                                           mode_s_hex_for_update,
-                                                                           min_timestamp,
-                                                                           max_timestamp))
-    logger.debug(
-        'Between {} and {}'.format(min_time, max_time))
+        'Assigning Itinerary ID {} for Mode S Hex {} between times {} and {}, elapsed time of {}:{} '.format(
+            itinerary_id,
+            mode_s_hex_for_update,
+            min_timestamp,
+            max_timestamp,
+            hr,
+            min))
+
 
     itinerary_cursor = dbconn.cursor()
 
@@ -87,9 +93,11 @@ def assign_itinerary_id_for_mode_s(mode_s_hex_for_update, itinerary_id, min_time
 def calc_time_diffs_for_mode_s(mode_s_hex):
     """
     Given an input of a string mode_s_hex code, query the DB for all records with that mode_s_hex and loop through
-    the record in order of timestamp, comparing each pair of records to determine the amount of time between
-    each point. If the 2 points are far arapt, it is assumed that the aircraft landed and took back off.
-    Note: this doesn't assign an ID for all records (the most recent batch), because the DB could be in the
+    the records in order of timestamp, comparing each pair of records to determine the amount of time between
+    a pair of time-ordered points. If the 2 points are far apart in time, it is assumed that the aircraft landed
+    and took back off while the large gap of time occurred.
+
+    Note: this doesn't assign an ID for all records (eg. the most recent batch), because the data could be in the
     middle of an itinerary when this script is run.
 
     :param mode_s_hex: the hex code identifying the aircraft
@@ -112,7 +120,8 @@ def calc_time_diffs_for_mode_s(mode_s_hex):
     count = 0
     for time_diff_tuple in uniq_mode_s_cursor.fetchall():
         curr_timestamp = time_diff_tuple[0]
-
+        logger.info('Current timestamp: {}'.format(time.strftime('%Y/%m/%d %H:%M:%S', time.localtime(curr_timestamp))))
+        # time.sleep(0.1)
         # Time difference between the current record and the previous record
         time_diff_sec = time_diff_tuple[1]
 
@@ -122,11 +131,13 @@ def calc_time_diffs_for_mode_s(mode_s_hex):
             continue
 
         if time_diff_sec > ITINERARY_MAX_TIME_DIFF_SECONDS:
-            maximum_timestamp = curr_timestamp
+            maximum_timestamp = curr_timestamp - time_diff_sec
+
             assign_itinerary_id_for_mode_s(itinerary_id=generate_itinerary_id(mode_s_hex, minimum_timestamp),
                                            mode_s_hex_for_update=mode_s_hex,
                                            min_time=minimum_timestamp,
                                            max_time=maximum_timestamp)
+            time.sleep(10)
             count = 0
         else:
             count += 1
@@ -159,5 +170,7 @@ mode_s_count = 0
 
 for mode_s in mode_s_list_to_process:
     mode_s_count += 1
-    logger.info('Calcing Itinerary IDs for Mode S: {} - Progress: {}/{}'.format(mode_s, mode_s_count, num_to_process))
+    logger.info('Calcing Itinerary IDs for Mode S: {} - Progress: {} Processed /{} Total Mode S IDs'.format(mode_s,
+                                                                                                            mode_s_count,
+                                                                                                            num_to_process))
     calc_time_diffs_for_mode_s(mode_s)
