@@ -17,7 +17,10 @@ from model import aircraft_report
 logger = logging.getLogger(__name__)
 parent_dir = os.path.dirname(os.path.realpath(__file__))
 
-zip_dir = 'output'
+# TODO: Set in config file
+zip_dir = 'F:\output'
+
+# TODO: Set in config file
 datestamp_format = '%Y-%m-%d'
 
 
@@ -35,7 +38,10 @@ def get_and_load_archive_data_by_date(zip_url, zip_filename):
         if not os.path.exists(zip_dir):
             os.makedirs(zip_dir)
         logger.info('Extracting the downloaded zip.')
-        res_zip.extractall(os.path.join(zip_dir, extract_dir))
+        try:
+            res_zip.extractall(os.path.join(zip_dir, extract_dir))
+        except:
+            logger.error('Could not extract file')
     else:
         logger.warning('Skipping this zip URL - it''s already been downloaded and extracted.')
 
@@ -68,9 +74,6 @@ maxlong83 = local_config['archiveboundingbox']['maxlong83']
 
 start_date = local_config['startdate']
 end_date = local_config['enddate']
-
-start_date = '2018-02-01'
-end_date = '2018-02-14'
 
 datestamps_list = get_list_of_datestamps_inclusive(start_date, end_date)
 
