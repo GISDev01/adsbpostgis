@@ -307,20 +307,24 @@ def get_aircraft_data_from_files(file_directory, minlat83, maxlat83, minlong83, 
             logger.info('Success AR parsing JSON data file: {}'.format(json_file))
 
         except:
+
             # temp workaround to fix malformed JSON in archive files - replace common strin
             # issues in-place before parsing
-
-            cleaned_archive_json_file = clean_malformed_json_file(json_file)
-
-            # Now that the JSON file is cleaned up, let's try this again
             try:
-                file_data = json.load(open(cleaned_archive_json_file, encoding='utf-8'))
-                logger.info('Success parsing fixed JSON data file: {}'.format(json_file))
+                cleaned_archive_json_file = clean_malformed_json_file(json_file)
 
-            except Exception as err:
-                # First pass of fixing the common JSON issue didn't work, so we're skipping this file for now
-                logger.error('Error parsing Fixed JSON data : {} \n Error file: {}'.format(err, json_file))
-                malformed_json_files.append(json_file)
+                # Now that the JSON file is cleaned up, let's try this again
+                try:
+                    file_data = json.load(open(cleaned_archive_json_file, encoding='utf-8'))
+                    logger.info('Success parsing fixed JSON data file: {}'.format(json_file))
+
+                except Exception as err:
+                    # First pass of fixing the common JSON issue didn't work, so we're skipping this file for now
+                    logger.error('Error parsing Fixed JSON data : {} \n Error file: {}'.format(err, json_file))
+                    malformed_json_files.append(json_file)
+                    continue
+
+            except:
                 continue
 
         for aircraft_record in file_data['acList']:
@@ -426,10 +430,15 @@ def get_aircraft_data_from_files(file_directory, minlat83, maxlat83, minlong83, 
                                            radio_receiver=radio_receiver_vrs,
                                            dbconn=main.postgres_db_connection)
 
+        # TODO: Set in config file
         destination = 'F:\ingested'
         if not os.path.exists(destination):
             os.makedirs(destination)
-        shutil.copy(json_file, destination)
+        try:
+            shutil.move(json_file, destination)
+        except:
+            logger.error('Cant move file')
+            pass
 
     if len(malformed_json_files) > 0:
         logger.info('{} Malformed JSON Files found: {}'.format(len(malformed_json_files), malformed_json_files))
