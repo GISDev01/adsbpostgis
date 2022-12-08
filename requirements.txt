@@ -1,4 +1,4 @@
-certifi==2017.7.27.1
+certifi==2022.12.7
 ppygis3==0.4
 psycopg2==2.7.1
 PyYAML==5.4
